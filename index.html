@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Körper-Editor">
+  <meta name="theme-color" content="#0d0f12">
+  <meta name="description" content="Realistischer 3D-Körper- und Charakter-Editor im Browser – optimiert für iPad Pro.">
+  <title>Körper-Editor</title>
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icon-180.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="css/app.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three/three.module.min.js",
+        "three/addons/": "./vendor/three/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <canvas id="view"></canvas>
+    <div id="loader">
+      <div class="loader-card">
+        <div class="loader-title">Körper-Editor</div>
+        <div class="loader-sub" id="loader-status">Lade Anatomie-Daten …</div>
+        <div class="loader-bar"><div id="loader-fill"></div></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
