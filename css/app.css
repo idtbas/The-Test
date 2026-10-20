@@ -38,6 +38,10 @@ body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none
 .loader-sub { color: var(--muted); }
 .loader-bar { height: 4px; background: #23262c; border-radius: 2px; overflow: hidden; margin-top: 18px; }
 #loader-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .3s; }
+.loader-bar { position: relative; }
+/* moving sheen: runs on the compositor, so it keeps moving while the main thread is busy */
+.loader-bar::after { content: ''; position: absolute; inset: 0; width: 30%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); animation: loader-sheen 1.2s linear infinite; will-change: transform; }
+@keyframes loader-sheen { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
 
 /* ------------------------------------------------------------------ layout */
 .ui-root { position: absolute; inset: 0; pointer-events: none; }

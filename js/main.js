@@ -10,6 +10,9 @@ function setProgress(f, text) {
   if (text) status.textContent = text;
 }
 
+// let the browser paint the loader before the next long synchronous step
+const paint = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+
 async function start() {
   setProgress(0.05, 'Lade Anatomie-Daten …');
   const assets = await loadCore();
@@ -24,7 +27,8 @@ async function start() {
   // the macro chunk is needed for the first frame, the rest streams in
   await assets.targets.loadChunk('macro', prog('macro'));
   const rest = Promise.all(chunks.filter(([k]) => k !== 'macro').map(([k]) => assets.targets.loadChunk(k, prog(k))));
-  setProgress(0.92, 'Baue Körper …');
+  setProgress(0.55, 'Baue Körper …');
+  await paint();
 
   const canvas = document.getElementById('view');
   const app = new App(canvas, assets, {
@@ -35,8 +39,16 @@ async function start() {
   // iPadOS may drop the WebGL context after backgrounding: recover by reloading (state is autosaved)
   canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); status.textContent = 'Grafik wird neu gestartet …'; document.getElementById('loader').classList.remove('done'); });
   canvas.addEventListener('webglcontextrestored', () => location.reload());
+  setProgress(0.7, 'Erzeuge Charakter …');
+  await paint();
   await applyTestParams(app);
   app.resize();
+  // Safari compiles the shaders on first use, which can block for many seconds: show it
+  setProgress(0.85, 'Bereite Grafik vor (Shader) …');
+  await paint();
+  try { await app.gl.compileAsync(app.scene, app.camera); } catch (e) { console.warn('compileAsync', e); }
+  setProgress(0.95, 'Fast fertig …');
+  await paint();
   addEventListener('resize', () => app.resize());
 
   rest.then(() => { app.character.human.dirty = true; app.requestRender(); app.emit('targets'); });
