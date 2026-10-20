@@ -309,7 +309,7 @@ export class Renderer {
   constructor(canvas, skinUniforms) {
     const gl = new THREE.WebGLRenderer({
       canvas, antialias: false, alpha: false, powerPreference: 'high-performance',
-      preserveDrawingBuffer: true, stencil: false, depth: true,
+      preserveDrawingBuffer: false, stencil: false, depth: true,
     });
     gl.shadowMap.enabled = true;
     gl.shadowMap.type = THREE.PCFShadowMap;
@@ -365,8 +365,13 @@ export class Renderer {
   }
 
   _rt(w, h, opts = {}) {
+    if (this.hdrType === undefined) {
+      const ext = this.gl.extensions;
+      this.hdrType = ext.has('EXT_color_buffer_float') || ext.has('EXT_color_buffer_half_float') ? THREE.HalfFloatType : THREE.UnsignedByteType;
+      if (this.hdrType !== THREE.HalfFloatType) console.warn('No float render targets, falling back to 8 bit');
+    }
     return new THREE.WebGLRenderTarget(w, h, {
-      type: THREE.HalfFloatType, format: THREE.RGBAFormat, minFilter: THREE.LinearFilter,
+      type: this.hdrType, format: THREE.RGBAFormat, minFilter: THREE.LinearFilter,
       magFilter: THREE.LinearFilter, depthBuffer: false, generateMipmaps: false, ...opts,
     });
   }

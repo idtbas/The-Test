@@ -53,8 +53,12 @@ vec3 eyeColor(vec3 p, vec3 Vl, out float irisMask) {
   iris = mix(iris, inner * 1.25 + 0.03, coll * 0.55);
   iris *= 0.75 + 0.5 * (fib * 0.5 + 0.5) * uDetail + 0.25 * (1.0 - uDetail);
   iris *= 1.0 - crypt * 0.45 * uDetail;
+  // contraction furrows: faint concentric rings in the outer iris
+  float furrow = smoothstep(0.75, 1.0, sin((r - rp) * 42.0 + gnoise(vec3(dir * 4.0, sd)) * 2.0)) * smoothstep(collR + 0.1, 0.9, r);
+  iris *= 1.0 - furrow * 0.18 * uDetail;
   iris *= mix(1.0, 0.55, smoothstep(0.82, 1.0, r) * uLimbus);       // limbal ring
   iris *= mix(0.7, 1.0, smoothstep(rp, rp + 0.12, r));               // pupillary ruff
+  iris = mix(iris, iris * 1.6 + 0.02, smoothstep(0.03, 0.0, abs(rpS - rp - 0.025)) * 0.35);
   vec3 col = mix(iris, vec3(0.006, 0.004, 0.004), pupil);
   // sclera with vessels
   float pz = p.z;
@@ -64,6 +68,12 @@ vec3 eyeColor(vec3 p, vec3 Vl, out float irisMask) {
   vec3 scl = uSclera * (0.92 + 0.08 * gnoise(p * 9.0 + sd));
   scl = mix(scl, vec3(0.55, 0.12, 0.1), clamp(vein * periph * uVeins * 1.2, 0.0, 1.0));
   scl = mix(scl, scl * vec3(1.0, 0.86, 0.8), smoothstep(0.4, -0.3, pz) * 0.5);
+  // towards the corners the conjunctiva gets pinker, above/below it is shadowed and greyer
+  scl = mix(scl, scl * vec3(1.0, 0.8, 0.78), smoothstep(0.35, 0.9, abs(p.x)) * 0.45);
+  scl = mix(scl, scl * vec3(0.86, 0.88, 0.94), smoothstep(0.3, 0.8, abs(p.y)) * 0.5);
+  // corneal limbus: soft bluish-grey transition into the sclera
+  float lim = smoothstep(1.25, 1.0, r) * smoothstep(0.95, 1.05, r);
+  scl = mix(scl, vec3(0.45, 0.48, 0.52) * luma(scl) * 1.6, lim * 0.35 * uLimbus);
   irisMask = smoothstep(1.06, 0.98, r) * step(zPlane - 0.15, p.z);
   return mix(scl, col, irisMask);
 }

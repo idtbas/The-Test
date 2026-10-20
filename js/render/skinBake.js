@@ -375,6 +375,15 @@ export class SkinBaker {
     this.dirty = true;
   }
 
+  /** Change the texture resolution (2048 / 4096); returns the new output target. */
+  resize(size) {
+    if (size === this.size) return;
+    this.size = size;
+    for (const rt of [this.rtBake, this.rtOut, this.rtTmp]) rt.setSize(size, size);
+    this.dilateMat.uniforms.uTexel.value.set(1 / size, 1 / size);
+    this.dirty = true;
+  }
+
   get albedo() { return this.rtOut.textures[0]; }
   get maps() { return this.rtOut.textures[1]; }
 
@@ -393,8 +402,12 @@ export class SkinBaker {
     this.dirty = true;
   }
 
-  bake() {
+  bake(force = false) {
     if (!this.dirty) return false;
+    // throttle while sliders are being dragged (the bake is a heavy full-texture pass)
+    const now = performance.now();
+    if (!force && this.lastBake && now - this.lastBake < 110) return false;
+    this.lastBake = now;
     this.dirty = false;
     const r = this.renderer;
     const prevRT = r.getRenderTarget();

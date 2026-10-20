@@ -37,6 +37,16 @@ function arms(S, { down = 33, forward = 5, elbow = 30, twist = 0, wrist = 0, cur
   }
 }
 
+// explicit arm pose (angles found by fitting target hand positions)
+function armPose(S, b, m, { down, fwd, twist, elbow, fore }) {
+  S.rotateWorld(b('clavicle'), [0, 0, 1], -m * 4 * D);
+  S.rotateWorld(b('upperarm01'), [0, 0, 1], -m * down * D);
+  S.rotateWorld(b('upperarm01'), [1, 0, 0], -fwd * D);
+  S.rotateLocal(b('upperarm01'), [0, 1, 0], m * twist * D);
+  S.rotateLocal(b('lowerarm01'), [1, 0, 0], elbow * D);
+  S.rotateLocal(b('lowerarm02'), [0, 1, 0], m * fore * D);
+}
+
 function legs(S, { inward = 2.5, knee = 0 } = {}) {
   for (const s of ['L', 'R']) {
     side(S, s, (b, m) => {
@@ -94,31 +104,37 @@ export const POSES = {
   hips: {
     label: 'Hände in den Hüften',
     apply(S) {
-      for (const s of ['L', 'R']) {
-        side(S, s, (b, m) => {
-          S.rotateWorld(b('upperarm01'), [0, 0, 1], -m * 22 * D);
-          S.rotateWorld(b('upperarm01'), [1, 0, 0], 8 * D);
-          S.rotateLocal(b('lowerarm01'), [1, 0, 0], -55 * D);
-          S.rotateLocal(b('lowerarm02'), [0, 1, 0], m * 40 * D);
-          curlFingers(S, b, 8);
-        });
-      }
+      for (const s of ['L', 'R']) side(S, s, (b, m) => {
+        armPose(S, b, m, { down: 5, fwd: -20, twist: 60, elbow: -40, fore: -60 });
+        curlFingers(S, b, 10);
+      });
       legs(S, { inward: 0 });
     },
   },
   thinker: {
     label: 'Nachdenklich',
     apply(S) {
-      arms(S, {});
+      side(S, 'L', (b, m) => { armPose(S, b, m, { down: 33, fwd: 5, twist: 0, elbow: 30, fore: 0 }); curlFingers(S, b, 16); });
       side(S, 'R', (b, m) => {
-        S.rotateWorld(b('upperarm01'), [0, 0, 1], -m * 5 * D);
-        S.rotateWorld(b('upperarm01'), [1, 0, 0], -30 * D);
-        S.rotateLocal(b('lowerarm01'), [1, 0, 0], -70 * D);
-        S.rotateLocal(b('lowerarm02'), [0, 1, 0], m * 30 * D);
-        S.rotateLocal(b('wrist'), [1, 0, 0], -20 * D);
+        armPose(S, b, m, { down: 50, fwd: 40, twist: 45, elbow: -90, fore: -60 });
+        S.rotateLocal(b('wrist'), [1, 0, 0], -15 * D);
+        curlFingers(S, b, 38);
       });
-      S.rotateWorld('neck02', [1, 0, 0], 8 * D);
-      S.rotateWorld('head', [0, 1, 0], -8 * D);
+      S.rotateWorld('neck02', [1, 0, 0], 6 * D);
+      S.rotateWorld('head', [0, 1, 0], -10 * D);
+      S.rotateWorld('head', [0, 0, 1], -4 * D);
+      legs(S, {});
+    },
+  },
+  wave: {
+    label: 'Winken',
+    apply(S) {
+      side(S, 'L', (b, m) => { armPose(S, b, m, { down: 33, fwd: 5, twist: 0, elbow: 30, fore: 0 }); curlFingers(S, b, 16); });
+      side(S, 'R', (b, m) => {
+        armPose(S, b, m, { down: -30, fwd: 10, twist: -30, elbow: -95, fore: 20 });
+        curlFingers(S, b, 4, 6);
+      });
+      S.rotateWorld('head', [0, 0, 1], 3 * D);
       legs(S, {});
     },
   },

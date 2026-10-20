@@ -152,6 +152,30 @@ class EditorUI {
     this.panel = panel;
     this.toastEl = el('div', 'toast');
     root.append(this.toastEl);
+    this._welcome();
+  }
+
+  _welcome() {
+    let seen = false;
+    try { seen = localStorage.getItem('koerper-editor:welcome') === '1'; } catch { /* private mode */ }
+    const q = new URLSearchParams(location.search);
+    if (seen || q.has('ui') || q.has('acc')) return;
+    const card = el('div', 'welcome', `
+      <div class="w-title">Willkommen im Körper-Editor</div>
+      <div class="w-grid">
+        <div><b>1 Finger</b><span>Figur drehen</span></div>
+        <div><b>2 Finger</b><span>Zoomen & verschieben</span></div>
+        <div><b>Regler</b><span>seitlich ziehen – weiter weg vom Regler = feiner</span></div>
+        <div><b>Doppeltipp</b><span>auf einen Regler setzt ihn zurück</span></div>
+        <div><b>∞-Taste</b><span>Regler weit über die Realität hinaus</span></div>
+        <div><b>Würfel</b><span>Zufälliger Charakter</span></div>
+      </div>
+      <button class="btn primary">Los geht's</button>`);
+    card.querySelector('button').addEventListener('click', () => {
+      card.remove();
+      try { localStorage.setItem('koerper-editor:welcome', '1'); } catch { /* ignore */ }
+    });
+    this.root.append(card);
   }
 
   _updateInset() {
@@ -657,6 +681,8 @@ class EditorUI {
       ]),
       section('Darstellung', [
         q,
+        chips({ label: 'Hauttextur', options: [{ label: 'Haut 2K', value: 2048 }, { label: 'Haut 4K', value: 4096 }], get: () => a.baker.size, set: (v) => { a.baker.resize(v); a.requestRender(); } }, this.ctx),
+        chips({ label: 'Haardichte', options: [{ label: 'Haare 60 %', value: 0.6 }, { label: 'Haare 100 %', value: 1 }, { label: 'Haare 130 %', value: 1.3 }], get: () => a.hair.quality, set: (v) => { a.hair.quality = v; a.hair.set({ seed: a.hair.params.seed }); a.hair.dirtyKinds.add('scalp'); a.hair.dirtyKinds.add('beard'); } }, this.ctx),
         toggle({ label: 'Subsurface Scattering (Haut)', get: () => rs.sss, set: (v) => a.setSSS(v) }, this.ctx),
         toggle({ label: 'Umgebungsverdeckung (SSAO)', get: () => rs.ao, set: (v) => { rs.ao = v; a.requestRender(); } }, this.ctx),
         hint('Optimiert für iPad Pro (M4/M5). Bei „Ultra" wird in voller Retina-Auflösung mit 4×MSAA gerendert.'),
@@ -688,7 +714,9 @@ class EditorUI {
 
   async screenshot() {
     const a = this.app;
-    a.requestRender(); a.frame();
+    this.toast('Foto wird erstellt …');
+    await new Promise((r) => setTimeout(r, 30));
+    a.captureFrame(16);
     const canvas = a.canvas;
     const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
     const name = `koerper-editor-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`;
@@ -723,7 +751,7 @@ class EditorUI {
 
   saveLocal() {
     const a = this.app;
-    a.requestRender(); a.frame();
+    a.captureFrame(6);
     const c = document.createElement('canvas');
     c.width = 180; c.height = 240;
     const src = a.canvas;

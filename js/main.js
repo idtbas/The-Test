@@ -32,6 +32,9 @@ async function start() {
     maxDpr: +(params.get('dpr') || 2),
   });
   window.app = app;
+  // iPadOS may drop the WebGL context after backgrounding: recover by reloading (state is autosaved)
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); status.textContent = 'Grafik wird neu gestartet …'; document.getElementById('loader').classList.remove('done'); });
+  canvas.addEventListener('webglcontextrestored', () => location.reload());
   await applyTestParams(app);
   app.resize();
   addEventListener('resize', () => app.resize());

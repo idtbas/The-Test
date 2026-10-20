@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { computeRegions, HAIRLINE_DEFAULTS, BROW_DEFAULTS, BODYHAIR_DEFAULTS } from '../core/regions.js';
 import { createStrandTemplate, createHairMaterial, hairColor } from './hairMaterial.js';
 import { DM } from '../core/character.js';
+import { Skeleton } from '../core/skeleton.js';
 
 export const HAIR_DEFAULTS = {
   style: 'sidepart', length: 1, density: 1, thickness: 1, gravity: 1, volume: 0.3, clump: 1,
@@ -49,6 +50,10 @@ export class HairSystem {
     this.restNew = sd.subdivideAttr(this.ch.assets.mesh.positions, 3).map((v) => v * DM);
     this.restNewN = new Float32Array(sd.newNrm);
     this.ch.poseDirty = true;
+    // skeleton of the unmorphed base mesh: maps style coordinates (defined on the base mesh)
+    // onto the current, morphed head
+    this.baseSkel = new Skeleton(this.ch.assets.rig);
+    this.baseSkel.computeRest(this.ch.assets.mesh.positions);
     this._findLashLines();
     this.applyColors();
   }
@@ -94,13 +99,15 @@ export class HairSystem {
     this.sets.lash.mat.uniforms.uAO.value = 0.9;
     this.sets.body.mat.uniforms.uAO.value = 0.8;
     this.sets.body.mat.uniforms.uMinPx.value = 0.45;
-    // stubble also darkens the skin through the bake
-    this.app.baker?.set({
+    // stubble also darkens the skin through the bake (only re-bake when it changes)
+    const bp = {
       stubble: p.beardStyle !== 'none' ? Math.min(1, 0.55 + p.beardDensity * 0.35) : 0,
       stubbleColor: '#' + hairColor(p.beardEu, p.beardPheo).getHexString(),
       scalpShade: p.style === 'bald' ? 0 : Math.min(1, 0.4 + p.density * 0.4),
       hairColor: '#' + hairColor(p.eumelanin, p.pheomelanin).getHexString(),
-    });
+    };
+    const key = JSON.stringify(bp);
+    if (key !== this._bakeKey && this.app.baker) { this._bakeKey = key; this.app.baker.set(bp); }
   }
 
   setAmbient(top, bottom, amb = 1) {
@@ -208,6 +215,21 @@ export class HairSystem {
   }
 
   /** shapeChanged: the body shape/pose changed (regenerate); otherwise only animate. */
+  /** Similarity transform base-mesh rest (m) -> morphed rest (m) of the head. */
+  _baseToMorph() {
+    const B = this.baseSkel, M = this.ch.skeleton;
+    const jn = (bone, end) => B.bones[B.byName.get(bone)][end];
+    const pick = (S, j) => S.joint(j).map((v) => v * DM);
+    const eL = jn('eye.L', 'head'), eR = jn('eye.R', 'head'), top = jn('head', 'tail'), neck = jn('head', 'head');
+    const cb = mid(pick(B, eL), pick(B, eR)), cm = mid(pick(M, eL), pick(M, eR));
+    const hb = dist(pick(B, top), pick(B, neck)), hm = dist(pick(M, top), pick(M, neck));
+    const wb = dist(pick(B, eL), pick(B, eR)), wm = dist(pick(M, eL), pick(M, eR));
+    const s = (hm / hb + wm / wb) / 2;
+    return new THREE.Matrix4().makeTranslation(cm[0], cm[1], cm[2])
+      .multiply(new THREE.Matrix4().makeScale(s, s, s))
+      .multiply(new THREE.Matrix4().makeTranslation(-cb[0], -cb[1], -cb[2]));
+  }
+
   onGeometryChanged(shapeChanged = true) {
     for (const k of FOLLOW) this._follow(k);
     if (!shapeChanged) return;
@@ -238,7 +260,11 @@ export class HairSystem {
   }
 
   update() {
-    if (this.regionsDirty) this._computeRegions();
+    const now = performance.now();
+    if (this.regionsDirty && (!this.regions || now - (this._lastRegions || 0) > 120)) {
+      this._lastRegions = now;
+      this._computeRegions();
+    }
     // rigid follow of the head between regenerations
     const H = this.headMatrix(new THREE.Matrix4());
     for (const k of ['scalp']) {
@@ -298,7 +324,8 @@ export class HairSystem {
     this.pending.set(id, { kind, head: H.clone(), pos: mesh.pos });
     this.busy.add(kind);
     const neckY = this.ch.bonePos('neck01')[1];
-    const job = { kind, mesh, density, params, headRot: Array.from(hr), headInv: H.clone().invert().elements.slice(), extra, up, neckY };
+    const HB = H.clone().multiply(this._baseToMorph());   // base-mesh rest -> posed world
+    const job = { kind, mesh, density, params, headRot: Array.from(hr), headInv: HB.clone().invert().elements.slice(), headM: HB.elements.slice(), extra, up, neckY };
     this.worker.postMessage({ id, job });
   }
 
@@ -361,6 +388,9 @@ export class HairSystem {
 
   get busyNow() { return this.busy.size > 0 || this.dirtyKinds.size > 0; }
 }
+
+const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
 function deepAssign(t, s) {
   for (const [k, v] of Object.entries(s)) {

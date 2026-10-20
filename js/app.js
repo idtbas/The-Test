@@ -39,7 +39,9 @@ export class App {
     this.controls.maxDistance = 9;
     this.controls.maxPolarAngle = Math.PI * 0.62;
     this.controls.screenSpacePanning = true;
+    this.controls.zoomToCursor = true;
     this.controls.update();
+    this._setupDoubleTap(canvas);
 
     this.character = new Character(assets, { subdivision: opts.subdivision ?? 1 });
     this.stage = new Stage(this.gl, this.scene, this.skinU);
@@ -131,6 +133,45 @@ export class App {
     this.eyeInv = { L: new THREE.Matrix4(), R: new THREE.Matrix4() };
   }
 
+  // double tap on the character: orbit around (and move towards) the tapped point
+  _setupDoubleTap(canvas) {
+    let last = null;
+    const ray = new THREE.Raycaster();
+    canvas.addEventListener('pointerup', (e) => {
+      const now = performance.now();
+      if (last && now - last.t < 320 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 24) {
+        last = null;
+        const r = canvas.getBoundingClientRect();
+        const ndc = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+        ray.setFromCamera(ndc, this.camera);
+        this.body.geometry.computeBoundingSphere();
+        const hit = ray.intersectObject(this.body, false)[0];
+        if (hit) this.focusOn(hit.point);
+        return;
+      }
+      last = { t: now, x: e.clientX, y: e.clientY };
+    });
+  }
+
+  focusOn(point) {
+    const cam = this.camera, ctl = this.controls;
+    const t0 = ctl.target.clone(), p0 = cam.position.clone();
+    const dir = p0.clone().sub(t0);
+    const d = Math.max(0.35, Math.min(dir.length() * 0.6, 1.4));
+    const p1 = point.clone().add(dir.normalize().multiplyScalar(d));
+    const start = performance.now();
+    const step = () => {
+      const k = Math.min(1, (performance.now() - start) / 600);
+      const e = 1 - Math.pow(1 - k, 3);
+      ctl.target.lerpVectors(t0, point, e);
+      cam.position.lerpVectors(p0, p1, e);
+      ctl.update();
+      this.requestRender();
+      if (k < 1) requestAnimationFrame(step);
+    };
+    step();
+  }
+
   on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit(type) { for (const fn of this.listeners) fn(type); }
 
@@ -168,8 +209,10 @@ export class App {
       m.geometry.attributes.normal.needsUpdate = true;
     }
     this.clothing?.sync();
-    this.baker.uniforms.uAge.value = ch.human.macros.age;
-    this.baker.dirty = true;
+    if (this.baker.uniforms.uAge.value !== ch.human.macros.age) {
+      this.baker.uniforms.uAge.value = ch.human.macros.age;
+      this.baker.dirty = true;
+    }
     const sv = ch.shapeVersion;
     this.hair?.onGeometryChanged(sv !== this._lastShape);
     this._lastShape = sv;
@@ -247,6 +290,16 @@ export class App {
     else this.camera.clearViewOffset();
     this.camera.updateProjectionMatrix();
     this.requestRender();
+  }
+
+  /** Render a fully converged image into the drawing buffer (for photo export). */
+  captureFrame(samples = 16) {
+    this.focusShadows();
+    for (let i = 0; i < samples; i++) {
+      this.hair.setFrame(i);
+      this.renderer.render(this.scene, this.camera, this.renderer.settings.sss ? this.skinMatPass1 : null, i);
+    }
+    this.accum = samples;
   }
 
   setLight(id) {

@@ -167,15 +167,16 @@ export const HAIR_STYLES = {
   crew: { label: 'Kurzhaar', length: 0.03, lengthTop: 1.8, lengthSide: 0.35, lift: 0.45, natural: 0.4, forward: 0.6, stiff: 0.9, K: 7, frizz: 0.2 },
   textured: { label: 'Kurz strukturiert', length: 0.05, lengthTop: 1.6, lengthSide: 0.4, lift: 0.6, natural: 0.3, up: 0.6, forward: 0.4, stiff: 0.75, K: 9, frizz: 0.5, clump: 0.6 },
   sidepart: { label: 'Seitenscheitel', length: 0.075, lengthTop: 1.3, lengthSide: 0.55, part: 0.45, side: 1, back: 0.4, lift: 0.25, stiff: 0.6, K: 12, clump: 0.5, gravity: 0.6 },
-  slick: { label: 'Zurückgekämmt', length: 0.1, lengthSide: 0.7, back: 1.2, lift: 0.25, stiff: 0.6, K: 14, clump: 0.55, gravity: 0.5 },
-  quiff: { label: 'Tolle', length: 0.08, lengthTop: 1.7, lengthSide: 0.35, back: 0.6, up: 1.0, lift: 0.7, stiff: 0.8, K: 14, clump: 0.7, gravity: 0.35, undercut: 0.7 },
+  slick: { label: 'Zurückgekämmt', length: 0.09, lengthSide: 0.7, back: 1.2, lift: 0.12, stiff: 0.45, K: 14, clump: 0.55, gravity: 0.9, comb: 0.9 },
+  quiff: { label: 'Tolle', length: 0.065, lengthTop: 1.7, lengthSide: 0.35, back: 1.1, up: 0.55, lift: 0.5, stiff: 0.75, K: 14, clump: 0.7, gravity: 0.6, undercut: 0.7, comb: 0.5 },
   bob: { label: 'Bob', length: 0.2, part: 0.0, side: 0.8, down: 1, lift: 0.18, stiff: 0.25, K: 20, clump: 0.45, gravity: 1, faceClear: 0.8, comb: 0.7 },
-  bangs: { label: 'Pony & Bob', length: 0.2, part: 0.0, side: 0.6, down: 1, lift: 0.18, stiff: 0.25, K: 20, clump: 0.45, gravity: 1, bangs: 1, faceClear: 0.7, comb: 0.7 },
+  bangs: { label: 'Pony & Bob', length: 0.2, part: 0.0, side: 0.3, down: 1, lift: 0.18, stiff: 0.25, K: 20, clump: 0.45, gravity: 1, bangs: 1, faceClear: 0.7, comb: 0.7 },
   long: { label: 'Lang glatt', length: 0.42, part: 0.15, side: 0.9, down: 1, back: 0.35, lift: 0.15, stiff: 0.15, K: 28, clump: 0.5, gravity: 1, faceClear: 1, comb: 0.8, behind: 0.7 },
   wavy: { label: 'Lang gewellt', length: 0.4, part: -0.35, side: 1, down: 1, back: 0.35, lift: 0.18, stiff: 0.15, K: 30, clump: 0.6, gravity: 1, wave: 0.012, waveFreq: 9, frizz: 0.25, faceClear: 1, comb: 0.8, behind: 0.6 },
   curly: { label: 'Locken', length: 0.22, part: 0.2, side: 0.6, down: 0.6, out: 0.5, lift: 0.4, stiff: 0.35, K: 30, clump: 0.75, gravity: 0.55, curl: 0.011, curlFreq: 32, frizz: 0.35, faceClear: 0.8, comb: 0.5 },
   afro: { label: 'Afro', length: 0.13, out: 1.4, lift: 0.85, stiff: 0.9, K: 22, clump: 0.55, gravity: 0.08, curl: 0.004, curlFreq: 120, frizz: 1.0, density: 1.2, faceClear: 0.5 },
   ponytail: { label: 'Pferdeschwanz', length: 0.38, back: 1.0, lift: 0.1, stiff: 0.2, K: 30, clump: 0.6, gravity: 1, gather: 1, comb: 1 },
+  bun: { label: 'Dutt', length: 0.34, back: 0.8, up: 0.5, lift: 0.1, stiff: 0.3, K: 32, clump: 0.5, gravity: 0.4, gather: 1, bun: 1, comb: 1 },
   mohawk: { label: 'Irokese', length: 0.12, up: 1.6, lift: 0.95, stiff: 1, K: 12, clump: 0.85, gravity: 0.05, mohawk: 1 },
   dreads: { label: 'Dreadlocks', length: 0.32, down: 1, out: 0.3, lift: 0.3, stiff: 0.35, K: 28, clump: 0.97, gravity: 1, frizz: 0.6, clumps: 0.06, curl: 0.002, curlFreq: 60, faceClear: 1, comb: 0.5 },
 };
@@ -199,11 +200,11 @@ function scalpGroom(st, rest, rn, part) {
   groom = add(groom, scl(sideDir, w('side') * (0.35 + nearPart)));
   if (st.bangs) {
     const front = smooth(-0.02, 0.06, q[2]) * smooth(0.77, 0.81, rest[1]);
-    groom = add(groom, scl([0, -0.6, 1.2], st.bangs * front * 2));
+    groom = add(groom, scl([0, -0.5, 1.2], st.bangs * front * 3 * smooth(0.075, 0.04, Math.abs(q[0] - part * 0.045))));
   }
   if (st.faceClear) {
     // long styles: comb the front away from the face, behind the ears
-    const front = smooth(-0.02, 0.05, q[2]) * (1 - (st.bangs || 0) * smooth(0.0, 0.04, 0.045 - Math.abs(q[0] - partX)));
+    const front = smooth(-0.02, 0.05, q[2]) * (1 - (st.bangs || 0) * smooth(0.0, 0.02, 0.06 - Math.abs(q[0] - partX)));
     groom = add(groom, scl([sideDir[0] * 0.55, 0.25, -1.0], st.faceClear * front * 1.8));
   }
   if (st.gather) groom = add(groom, scl(norm(sub([0, 0.74, -0.09], rest)), 1.2));
@@ -341,8 +342,44 @@ export function generate(job) {
     const down = [0, -1, 0];
     const comb = kind === 'scalp' ? (st.comb ?? 0.35) : 0;
     const Hinv = job.headInv;
+    // ponytail: strands are tied at a point behind the head and hang as one bundle
+    const tie = st.gather && job.headM ? mat4p(job.headM, st.bun ? [0, 0.782, -0.078] : [0, 0.748, -0.083]) : null;
+    let tiedAt = -1, tailS = 0;
+    const tailAng = r1 * Math.PI * 2, tailRad = Math.sqrt(r3);
     for (let k = 1; k < K; k++) {
       const t = k / (K - 1);
+      if (tie) {
+        if (tiedAt < 0 && len(sub(p, tie)) < 0.016 + 0.01 * r2) tiedAt = k;
+        if (tiedAt >= 0 && st.bun) {
+          // wrap around a torus-shaped knot sitting on the back of the head
+          tailS += seg;
+          const back = norm(mat3v(headRot, [0, 0.28, -1])), upv = norm(cross(mat3v(headRot, [1, 0, 0]), back));
+          const sidev = cross(back, upv);
+          const R = 0.022 + 0.008 * tailRad;
+          const phi = tailAng + tailS / R;
+          const c = add(tie, scl(back, 0.036));
+          const ring = add(scl(upv, Math.cos(phi) * R), scl(sidev, Math.sin(phi) * R));
+          let q = add(add(c, ring), scl(back, (r2 - 0.5) * 0.024 + Math.sin(phi * 0.5) * 0.004));
+          if (sdf) { const sdq = sdf.sample(q); if (sdq < 0.003) q = add(q, scl(sdf.grad(q), 0.003 - sdq)); }
+          out[k * 3] = q[0]; out[k * 3 + 1] = q[1]; out[k * 3 + 2] = q[2];
+          p = q;
+          continue;
+        }
+        if (tiedAt >= 0) {
+          tailS += seg;
+          const down = [0, -1, 0], back = mat3v(headRot, [0, 0, -1]);
+          const ax = norm(add(scl(down, 1), scl(back, Math.max(0, 0.45 - tailS * 1.5))));
+          const side = norm(cross(ax, [1, 0, 0])), side2 = cross(ax, side);
+          const rt = (0.006 + tailS * 0.06) * tailRad;
+          const center = add(add(tie, scl(back, 0.012 + Math.min(tailS, 0.04) * 0.4)), scl(ax, tailS));
+          let q = add(center, add(scl(side, Math.cos(tailAng) * rt), scl(side2, Math.sin(tailAng) * rt)));
+          if (sdf) { const sdq = sdf.sample(q); if (sdq < 0.003) q = add(q, scl(sdf.grad(q), 0.003 - sdq)); }
+          out[k * 3] = q[0]; out[k * 3 + 1] = q[1]; out[k * 3 + 2] = q[2];
+          p = q;
+          continue;
+        }
+        d = norm(add(d, scl(norm(sub(tie, p)), 0.6)));
+      }
       // stiffness keeps the root direction, gravity pulls down further along the strand
       const g = gravity * (1 - stiff * (1 - t) * 0.9) * seg * 18;
       d = norm(add(d, scl(down, g)));
@@ -357,7 +394,7 @@ export function generate(job) {
       // the head surface before it is allowed to fall freely
       if (comb > 0 && sdf && Hinv) {
         const sdist = sdf.sample(p);
-        const zone = 0.012 + minD * 1.5;
+        const zone = 0.018 + minD * 2;
         if (sdist < zone) {
           const pr = mat4p(Hinv, p);
           if (pr[1] > 0.66) {

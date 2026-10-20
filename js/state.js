@@ -33,7 +33,10 @@ export function setState(app, s) {
   const h = clone(HAIR_DEFAULTS);
   if (s.hair) deepMerge(h, s.hair);
   app.hair.set(h);
-  if (app.clothing && s.clothing) app.clothing.set(s.clothing);
+  if (app.clothing) {
+    const female = (s.human?.macros?.gender ?? 0.5) < 0.5;
+    app.clothing.set(s.clothing || (female ? { top: 'bandeau', bottom: 'briefs' } : { top: 'none', bottom: 'boxers' }));
+  }
   app.requestRender();
   app.emit('state');
 }
@@ -81,10 +84,10 @@ export const PRESETS = {
   woman: {
     label: 'Frau', icon: '♀',
     s: { human: { macros: { ...MACRO_DEFAULTS, gender: 0.0, age: 0.48, muscle: 0.5, weight: 0.48, height: 0.55, proportions: 0.7, breastSize: 0.55, caucasian: 0.7, african: 0.1, asian: 0.2 },
-      mods: { 'mouth/mouth-upperlip-volume|decr|incr': 0.3, 'mouth/mouth-lowerlip-volume|decr|incr': 0.25, 'nose/nose-scale-horiz|decr|incr': -0.15, 'chin/chin-width|decr|incr': -0.2, 'eyes/l-eye-scale|decr|incr': 0.15, 'eyes/r-eye-scale|decr|incr': 0.15 } },
+      mods: { 'mouth/mouth-upperlip-volume|decr|incr': 0.3, 'mouth/mouth-lowerlip-volume|decr|incr': 0.25, 'nose/nose-scale-horiz|decr|incr': -0.15, 'chin/chin-width|decr|incr': -0.2, 'eyes/l-eye-scale|decr|incr': 0.04, 'eyes/r-eye-scale|decr|incr': 0.04, 'eyes/l-eye-height2|decr|incr': -0.2, 'eyes/r-eye-height2|decr|incr': -0.2 } },
       skin: { melanin: 0.2, hemo: 0.55, undertone: 0.05, freckles: 0.1, lipAmount: 0.15, lipColor: '#b34a55' },
       eyes: { irisColor1: '#5d7a4a', irisColor2: '#4f6d7a', irisMix: 0.5 },
-      hair: H({ style: 'wavy', eumelanin: 2.2, pheomelanin: 0.9, tipEu: 1.4, tipPheo: 0.8, ombre: 0.4, length: 1.0 }) },
+      hair: H({ style: 'wavy', eumelanin: 2.2, pheomelanin: 0.9, tipEu: 1.4, tipPheo: 0.8, ombre: 0.4, length: 1.0, lashLength: 1.2, brows: { thickness: 0.8, arch: 1.25, density: 0.9 }, bodyHair: { arms: 0.06, legs: 0.03 } }) },
   },
   man: {
     label: 'Mann', icon: '♂',
@@ -96,42 +99,42 @@ export const PRESETS = {
   },
   athlete: {
     label: 'Athletin', icon: '🏃',
-    s: { human: { macros: { ...MACRO_DEFAULTS, gender: 0.05, age: 0.45, muscle: 0.85, weight: 0.35, height: 0.62, proportions: 0.85, african: 0.75, caucasian: 0.15, asian: 0.1 } },
+    s: { clothing: { top: 'bra', bottom: 'shorts', topColor: '#1d3b5c', bottomColor: '#1d3b5c', topRough: 0.55, bottomRough: 0.55 }, human: { macros: { ...MACRO_DEFAULTS, gender: 0.05, age: 0.45, muscle: 0.85, weight: 0.35, height: 0.62, proportions: 0.85, african: 0.75, caucasian: 0.15, asian: 0.1 } },
       skin: { melanin: 0.68, hemo: 0.5, undertone: 0.2 },
       eyes: { irisColor1: '#3a2414', irisColor2: '#4a2e18', irisMix: 0.2 },
       hair: H({ style: 'ponytail', eumelanin: 7, pheomelanin: 0.3, curl: 1, curlExtra: 0.004, length: 0.9 }) },
   },
   bodybuilder: {
     label: 'Bodybuilder', icon: '💪',
-    s: { human: { macros: { ...MACRO_DEFAULTS, gender: 1, age: 0.5, muscle: 1.0, weight: 0.62, height: 0.6, proportions: 0.8 },
+    s: { clothing: { top: 'none', bottom: 'briefs', bottomColor: '#111214' }, human: { macros: { ...MACRO_DEFAULTS, gender: 1, age: 0.5, muscle: 1.0, weight: 0.62, height: 0.6, proportions: 0.8 },
       mods: { 'torso/torso-vshape|decr|incr': 0.8, 'neck/neck-scale-horiz|decr|incr': 0.5, 'measure/measure-waist-circ|decr|incr': -0.4 } },
       skin: { melanin: 0.42, undertone: 0.3, oil: 1.0 },
       hair: H({ style: 'buzz', eumelanin: 5, beardStyle: 'boxed', beardLength: 0.008 }) },
   },
   elder_w: {
     label: 'Seniorin', icon: '👵',
-    s: { human: { macros: { ...MACRO_DEFAULTS, gender: 0.0, age: 0.92, muscle: 0.35, weight: 0.6, height: 0.42, breastSize: 0.6, breastFirmness: 0.15 } },
+    s: { clothing: { top: 'tshirt', bottom: 'leggings', topColor: '#8a6f7a', bottomColor: '#2e3036' }, human: { macros: { ...MACRO_DEFAULTS, gender: 0.0, age: 0.92, muscle: 0.35, weight: 0.6, height: 0.42, breastSize: 0.6, breastFirmness: 0.15 } },
       skin: { melanin: 0.15, spots: 1, wrinkles: 0.4, veins: 0.7 },
       eyes: { irisColor1: '#6a7f8f', irisColor2: '#8a9aa6', irisMix: 0.6, scleraVeins: 0.5, sclera: '#e6dccf' },
       hair: H({ style: 'bob', eumelanin: 2, gray: 0.92, length: 0.7, volume: 0.6 }) },
   },
   elder_m: {
     label: 'Senior', icon: '👴',
-    s: { human: { macros: { ...MACRO_DEFAULTS, gender: 1, age: 0.95, muscle: 0.4, weight: 0.62, height: 0.45 } },
+    s: { clothing: { top: 'tank', bottom: 'boxers', topColor: '#d9d6cf', bottomColor: '#3a4a5c' }, human: { macros: { ...MACRO_DEFAULTS, gender: 1, age: 0.95, muscle: 0.4, weight: 0.62, height: 0.45 } },
       skin: { melanin: 0.25, spots: 1, wrinkles: 0.5, veins: 0.6 },
       eyes: { irisColor1: '#4a5a66', irisColor2: '#6c7c88', irisMix: 0.5, scleraVeins: 0.6 },
       hair: H({ style: 'crew', eumelanin: 2, gray: 0.97, hairline: { recession: 0.025, crown: 0.035, top: 0.6 }, beardStyle: 'full', beardLength: 0.025, beardGray: 0.95 }) },
   },
   child: {
     label: 'Kind', icon: '🧒',
-    s: { human: { macros: { ...MACRO_DEFAULTS, gender: 0.5, age: 0.16, muscle: 0.5, weight: 0.5, height: 0.5 } },
+    s: { clothing: { top: 'tshirt', bottom: 'shorts', topColor: '#d9a43a', bottomColor: '#3c5a8a' }, human: { macros: { ...MACRO_DEFAULTS, gender: 0.5, age: 0.16, muscle: 0.5, weight: 0.5, height: 0.5 } },
       skin: { melanin: 0.22, freckles: 0.6, flush: 0.6, moles: 0.05 },
       eyes: { irisColor1: '#3f6a8a', irisColor2: '#5c86a8', irisMix: 0.6, pupil: 0.45 },
       hair: H({ style: 'textured', eumelanin: 1.0, pheomelanin: 0.5, length: 1.2 }) },
   },
   viking: {
     label: 'Wikinger', icon: '🪓',
-    s: { human: { macros: { ...MACRO_DEFAULTS, gender: 1, age: 0.6, muscle: 0.8, weight: 0.7, height: 0.8, caucasian: 1, african: 0, asian: 0 },
+    s: { clothing: { top: 'none', bottom: 'shorts', bottomColor: '#4a3626', bottomRough: 0.95, bottomSheen: 0.2 }, human: { macros: { ...MACRO_DEFAULTS, gender: 1, age: 0.6, muscle: 0.8, weight: 0.7, height: 0.8, caucasian: 1, african: 0, asian: 0 },
       mods: { 'chin/chin-width|decr|incr': 0.5, 'eyebrows/eyebrows-trans|backward|forward': 0.6, 'nose/nose-scale-vert|decr|incr': 0.3 } },
       skin: { melanin: 0.1, hemo: 0.65, flush: 0.8, freckles: 0.3, scars: 0.6 },
       eyes: { irisColor1: '#5f86a3', irisColor2: '#9fb7c7', irisMix: 0.7 },
@@ -139,7 +142,7 @@ export const PRESETS = {
   },
   elf: {
     label: 'Elfe', icon: '🧝',
-    s: { human: { macros: { ...MACRO_DEFAULTS, gender: 0.15, age: 0.45, muscle: 0.4, weight: 0.3, height: 0.8, proportions: 1 },
+    s: { clothing: { top: 'longsleeve', bottom: 'leggings', topColor: '#3e5a3a', bottomColor: '#2c3a2a', topSheen: 0.9 }, human: { macros: { ...MACRO_DEFAULTS, gender: 0.15, age: 0.45, muscle: 0.4, weight: 0.3, height: 0.8, proportions: 1 },
       mods: { 'ears/l-ear-shape|pointed|triangle': -1.8, 'ears/r-ear-shape|pointed|triangle': -1.8, 'ears/l-ear-scale-vert|decr|incr': 1.2, 'ears/r-ear-scale-vert|decr|incr': 1.2, 'ears/l-ear-rot|backward|forward': -0.8, 'ears/r-ear-rot|backward|forward': -0.8, 'eyes/l-eye-scale|decr|incr': 0.5, 'eyes/r-eye-scale|decr|incr': 0.5, 'cheek/l-cheek-bones|decr|incr': 0.8, 'cheek/r-cheek-bones|decr|incr': 0.8, 'chin/chin-width|decr|incr': -0.6 } },
       skin: { melanin: 0.05, hemo: 0.35, undertone: -0.3, tint: '#d8ecff', tintAmount: 0.12 },
       eyes: { irisColor1: '#7fd0c8', irisColor2: '#3d8a9a', irisMix: 0.8, glow: 0.15 },
@@ -147,7 +150,7 @@ export const PRESETS = {
   },
   orc: {
     label: 'Ork', icon: '👹',
-    s: { human: { macros: { ...MACRO_DEFAULTS, gender: 1.3, age: 0.55, muscle: 1.3, weight: 0.85, height: 0.9 },
+    s: { clothing: { top: 'none', bottom: 'shorts', bottomColor: '#3a2a1e', bottomRough: 0.95 }, human: { macros: { ...MACRO_DEFAULTS, gender: 1.3, age: 0.55, muscle: 1.3, weight: 0.85, height: 0.9 },
       mods: { 'chin/chin-prognathism|decr|incr': 1.6, 'chin/chin-width|decr|incr': 1.5, 'nose/nose-scale-horiz|decr|incr': 1.5, 'nose/nose-flaring|decr|incr': 1.2, 'eyebrows/eyebrows-trans|backward|forward': 1.8, 'neck/neck-scale-horiz|decr|incr': 1.5, 'ears/l-ear-shape|pointed|triangle': -1.2, 'ears/r-ear-shape|pointed|triangle': -1.2, 'eyes/l-eye-scale|decr|incr': -0.5, 'eyes/r-eye-scale|decr|incr': -0.5 } },
       bones: { jaw: 1.18, chestW: 1.12, clavicle: 1.15 },
       skin: { melanin: 0.3, tint: '#5f8f3a', tintAmount: 0.85, scars: 1, moles: 1 },
@@ -156,7 +159,7 @@ export const PRESETS = {
   },
   alien: {
     label: 'Außerirdisch', icon: '👽',
-    s: { human: { macros: { ...MACRO_DEFAULTS, gender: 0.5, age: 0.45, muscle: 0.2, weight: 0.05, height: 0.6 },
+    s: { clothing: { top: 'longsleeve', bottom: 'leggings', topColor: '#c8ccd2', bottomColor: '#c8ccd2', topRough: 0.4, bottomRough: 0.4, knit: 0.2 }, human: { macros: { ...MACRO_DEFAULTS, gender: 0.5, age: 0.45, muscle: 0.2, weight: 0.05, height: 0.6 },
       mods: { 'eyes/l-eye-scale|decr|incr': 2.2, 'eyes/r-eye-scale|decr|incr': 2.2, 'head/head-scale-vert|decr|incr': 1.5, 'chin/chin-width|decr|incr': -1.8, 'nose/nose-scale-depth|decr|incr': -1.5, 'nose/nose-scale-horiz|decr|incr': -1, 'mouth/mouth-scale-horiz|decr|incr': -1, 'ears/l-ear-scale|decr|incr': -2, 'ears/r-ear-scale|decr|incr': -2 } },
       bones: { skull: 1.25, neckL: 1.2, neckT: 0.8, fingers: 1.35 },
       skin: { melanin: 0.1, tint: '#9aa3a8', tintAmount: 0.9, moles: 0, freckles: 0, veins: 1 },
@@ -165,7 +168,7 @@ export const PRESETS = {
   },
   dwarf: {
     label: 'Zwerg', icon: '⛏️',
-    s: { human: { macros: { ...MACRO_DEFAULTS, gender: 1, age: 0.7, muscle: 0.8, weight: 0.8, height: -0.3, proportions: 0.1 },
+    s: { clothing: { top: 'tshirt', bottom: 'shorts', topColor: '#6a3b2a', bottomColor: '#3a3326', topRough: 0.95 }, human: { macros: { ...MACRO_DEFAULTS, gender: 1, age: 0.7, muscle: 0.8, weight: 0.8, height: -0.3, proportions: 0.1 },
       mods: { 'nose/nose-scale-horiz|decr|incr': 1, 'nose/nose-volume|decr|incr': 1.2 } },
       bones: { femurL: 0.75, tibiaL: 0.75, humerusL: 0.85, ulnaL: 0.85, chestW: 1.15, hand: 1.15 },
       skin: { melanin: 0.2, flush: 1, hemo: 0.7 },
@@ -234,6 +237,8 @@ export function randomState(app, extreme = false) {
     beardStyle: male && Math.random() < 0.6 ? pick(['stubble', 'full', 'boxed', 'goatee', 'mustache', 'circle', 'vandyke']) : 'none',
     beardLength: rnd(0.0015, 0.03), beardEu: eu, beardPheo: rnd(0.2, 1),
     brows: { ...HAIR_DEFAULTS.brows, thickness: rnd(0.7, 1.4), arch: rnd(0.5, 1.5), density: rnd(0.7, 1.2) }, browEu: Math.max(eu, 2.5),
+    bodyHair: male ? { ...HAIR_DEFAULTS.bodyHair, arms: rnd(0.2, 0.6), legs: rnd(0.25, 0.7), chest: Math.random() < 0.4 ? rnd(0.2, 0.9) : 0, belly: Math.random() < 0.3 ? rnd(0.2, 0.7) : 0 } : { ...HAIR_DEFAULTS.bodyHair, arms: rnd(0, 0.1), legs: rnd(0, 0.06) },
+    lashLength: male ? rnd(0.85, 1.05) : rnd(1.0, 1.3),
   };
   if (Math.random() < 0.3) Object.assign(s.hair.hairline, { recession: male ? rnd(0, 0.03) : 0 });
   return s;

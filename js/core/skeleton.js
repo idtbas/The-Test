@@ -119,13 +119,16 @@ export class Skeleton {
     mat3Mul(this.local[i], axisAngle(axis, angle), this.local[i]);
   }
 
-  /** Rotate bone about an axis given in rest-pose world space. */
+  /**
+   * Rotate bone about an axis given in rest-pose world space, applied after the rotations
+   * already set on this bone (extrinsic order, so calls compose like world rotations).
+   */
   rotateWorld(name, axis, angle) {
     const i = this.byName.get(name);
     if (i === undefined) return;
     const R = this.restRot[i];
     const la = mat3Vec(mat3T(R), axis);
-    mat3Mul(this.local[i], axisAngle(la, angle), this.local[i]);
+    mat3Mul(axisAngle(la, angle), this.local[i], this.local[i]);
   }
 
   setScale(name, sx, sy, sz) {
