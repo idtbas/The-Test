@@ -92,7 +92,7 @@ export class HairSystem {
       u.uGray.value = gray; u.uWidth.value = w; u.uSpec.value = spec; u.uSpec2.value = spec * 0.7;
       u.uAO.value = 0.6; u.uTaper.value = 0.9;
     };
-    set('brow', p.browEu, p.browPheo, p.gray * 0.5, 0.00016, 0.4);
+    set('brow', p.browEu, p.browPheo, p.gray * 0.5, 0.00019, 0.35);
     set('lash', p.lashEu, p.lashPheo, 0, 0.0002, 0.5);
     set('beard', p.beardEu, p.beardPheo, p.beardGray, 0.00016, 0.5);
     set('body', p.bodyEu, p.bodyPheo, p.gray * 0.5, 0.00008, 0.3);
@@ -105,6 +105,8 @@ export class HairSystem {
       stubbleColor: '#' + hairColor(p.beardEu, p.beardPheo).getHexString(),
       scalpShade: p.style === 'bald' ? 0 : Math.min(1, 0.4 + p.density * 0.4),
       hairColor: '#' + hairColor(p.eumelanin, p.pheomelanin).getHexString(),
+      browShade: Math.min(1, p.brows.density * 0.7),
+      browColor: '#' + hairColor(p.browEu, p.browPheo).getHexString(),
     };
     const key = JSON.stringify(bp);
     if (key !== this._bakeKey && this.app.baker) { this._bakeKey = key; this.app.baker.set(bp); }
@@ -319,13 +321,13 @@ export class HairSystem {
         extra.eyeCenters[s] = [c[0] * DM, c[1] * DM - this.ch.groundY, c[2] * DM];
       }
     }
-    const up = [hr[3], hr[4], hr[5]];
+    const up = [hr[3], hr[4], hr[5]], fwd = [hr[6], hr[7], hr[8]];
     const id = ++this.jobId;
     this.pending.set(id, { kind, head: H.clone(), pos: mesh.pos });
     this.busy.add(kind);
     const neckY = this.ch.bonePos('neck01')[1];
     const HB = H.clone().multiply(this._baseToMorph());   // base-mesh rest -> posed world
-    const job = { kind, mesh, density, params, headRot: Array.from(hr), headInv: HB.clone().invert().elements.slice(), headM: HB.elements.slice(), extra, up, neckY };
+    const job = { kind, mesh, density, params, headRot: Array.from(hr), headInv: HB.clone().invert().elements.slice(), headM: HB.elements.slice(), extra, up, fwd, neckY };
     this.worker.postMessage({ id, job });
   }
 

@@ -4,7 +4,7 @@ Ein realistischer 3D-Körper- und Charakter-Editor, der komplett im Browser läu
 statische Seite direkt auf **GitHub Pages**. Optimiert für **iPad Pro (M4/M5) mit Safari**,
 läuft aber auch auf jedem Desktop-Browser mit WebGL 2.
 
-**Live:** `https://<benutzer>.github.io/The-Test/` (nach Aktivierung von GitHub Pages, siehe unten)
+**Live:** https://idtbas.github.io/The-Test/ (nach einmaliger Aktivierung von GitHub Pages, siehe unten)
 
 ## Was man einstellen kann
 
@@ -56,7 +56,7 @@ Kein Build-Schritt, keine externen Abhängigkeiten zur Laufzeit – alles liegt 
 
 1. Im Repository: **Settings → Pages**
 2. **Source:** „Deploy from a branch", **Branch:** `main`, Ordner `/ (root)` → Save
-3. Nach ~1 Minute ist die Seite unter `https://<benutzer>.github.io/The-Test/` erreichbar
+3. Nach ~1 Minute ist die Seite unter https://idtbas.github.io/The-Test/ erreichbar
 
 Auf dem iPad: In Safari öffnen → Teilen → „Zum Home-Bildschirm" für Vollbild ohne Browserleiste.
 

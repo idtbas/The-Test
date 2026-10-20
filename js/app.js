@@ -53,7 +53,7 @@ export class App {
     this.baker = new SkinBaker(this.gl, this.character, opts.textureSize || 2048);
     this.skinU.tAlbedo.value = this.baker.albedo;
     this.skinU.tMaps.value = this.baker.maps;
-    this.hair = new HairSystem(this, opts.hairQuality ?? 1);
+    this.hair = new HairSystem(this, opts.hairQuality ?? 0.8);
     this.hair.setAmbient(new THREE.Color(0.42, 0.43, 0.46), new THREE.Color(0.14, 0.13, 0.12), 1);
     this.clothing = new Clothing(this);
     this.stage.apply('studio');

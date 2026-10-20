@@ -682,7 +682,7 @@ class EditorUI {
       section('Darstellung', [
         q,
         chips({ label: 'Hauttextur', options: [{ label: 'Haut 2K', value: 2048 }, { label: 'Haut 4K', value: 4096 }], get: () => a.baker.size, set: (v) => { a.baker.resize(v); a.requestRender(); } }, this.ctx),
-        chips({ label: 'Haardichte', options: [{ label: 'Haare 60 %', value: 0.6 }, { label: 'Haare 100 %', value: 1 }, { label: 'Haare 130 %', value: 1.3 }], get: () => a.hair.quality, set: (v) => { a.hair.quality = v; a.hair.set({ seed: a.hair.params.seed }); a.hair.dirtyKinds.add('scalp'); a.hair.dirtyKinds.add('beard'); } }, this.ctx),
+        chips({ label: 'Haardichte', options: [{ label: 'Haare 60 %', value: 0.6 }, { label: 'Haare 80 %', value: 0.8 }, { label: 'Haare 100 %', value: 1 }, { label: 'Haare 130 %', value: 1.3 }], get: () => a.hair.quality, set: (v) => { a.hair.quality = v; a.hair.set({ seed: a.hair.params.seed }); a.hair.dirtyKinds.add('scalp'); a.hair.dirtyKinds.add('beard'); } }, this.ctx),
         toggle({ label: 'Subsurface Scattering (Haut)', get: () => rs.sss, set: (v) => a.setSSS(v) }, this.ctx),
         toggle({ label: 'Umgebungsverdeckung (SSAO)', get: () => rs.ao, set: (v) => { rs.ao = v; a.requestRender(); } }, this.ctx),
         hint('Optimiert für iPad Pro (M4/M5). Bei „Ultra" wird in voller Retina-Auflösung mit 4×MSAA gerendert.'),

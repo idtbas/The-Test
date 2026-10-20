@@ -55,6 +55,7 @@ uniform float uFreckles, uFreckleScale, uMoles, uVeins, uSpots, uAge, uWrinkles,
 uniform vec3 uTint; uniform float uTintAmount;
 uniform float uStubble; uniform vec3 uStubbleColor;
 uniform float uScalpShade; uniform vec3 uHairColor;
+uniform float uBrowShade; uniform vec3 uBrowColor;
 uniform vec3 uLipColor; uniform float uLipAmount, uLipGloss;
 uniform vec3 uBlushColor; uniform float uBlushAmount;
 uniform vec3 uShadowColor; uniform float uShadowAmount;
@@ -180,6 +181,9 @@ void main() {
   // scalp: hair follicles + slight greying under hair
   float scalp = vRegion.x * uScalpShade;
   col = mix(col, col * (uHairColor * 1.2 + 0.25), scalp * (0.25 + 0.45 * follicle));
+  // brows: fine vellus hair and pigmented follicles under the terminal hairs
+  float browR = vRegion.z * uBrowShade;
+  col = mix(col, col * (uBrowColor * 1.4 + 0.3), browR * (0.3 + 0.35 * follicle));
 
   // ---------------------------------------------------------------- makeup
   float blush = gauss3(pm, vec3(0.045, 0.700, 0.112), vec3(0.020, 0.014, 0.03)) * face;
@@ -345,6 +349,7 @@ export class SkinBaker {
       tMask1: { value: this.mask1 }, tMask2: { value: this.mask2 },
       uSeed: { value: 0.37 }, uAge: { value: 0.5 },
       uHairColor: { value: new THREE.Color(0.1, 0.07, 0.05) }, uScalpShade: { value: 0 },
+      uBrowColor: { value: new THREE.Color(0.08, 0.06, 0.05) }, uBrowShade: { value: 0 },
     };
     for (const [k, v] of Object.entries(SKIN_DEFAULTS)) {
       const name = 'u' + k[0].toUpperCase() + k.slice(1);

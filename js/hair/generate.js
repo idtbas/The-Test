@@ -52,13 +52,13 @@ export class VoxelSDF {
     let qh = 0, qt = 0;
     const idx = (x, y, z) => (z * dim[1] + y) * dim[0] + x;
     for (let i = 0; i < n; i++) {
-      const p = [pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]];
-      if (p[1] < lo[1]) continue;
-      const c = p.map((v, k) => Math.round((v - lo[k]) / h));
-      if (c.some((v, k) => v < 0 || v >= dim[k])) continue;
-      const j = idx(c[0], c[1], c[2]);
-      const cp = c.map((v, k) => lo[k] + v * h);
-      const d = len(sub(p, cp));
+      const px = pos[i * 3], py = pos[i * 3 + 1], pz = pos[i * 3 + 2];
+      if (py < lo[1]) continue;
+      const cx = Math.round((px - lo[0]) / h), cy = Math.round((py - lo[1]) / h), cz = Math.round((pz - lo[2]) / h);
+      if (cx < 0 || cy < 0 || cz < 0 || cx >= dim[0] || cy >= dim[1] || cz >= dim[2]) continue;
+      const j = idx(cx, cy, cz);
+      const ex = px - (lo[0] + cx * h), ey = py - (lo[1] + cy * h), ez = pz - (lo[2] + cz * h);
+      const d = Math.sqrt(ex * ex + ey * ey + ez * ez);
       if (d < dist[j]) { dist[j] = d; if (near[j] < 0) queue[qt++] = j; near[j] = i; }
     }
     // brushfire propagation of nearest surface points (6-neighbourhood, re-push on improvement)
@@ -97,9 +97,12 @@ export class VoxelSDF {
     this.dist = dist;
   }
 
-  sample(p) {
+  sample(p) { return this.s3(p[0], p[1], p[2]); }
+
+  /** Signed distance at (x, y, z), trilinear; 1 outside the grid. */
+  s3(px, py, pz) {
     const { lo, h, dim, dist } = this;
-    const fx = (p[0] - lo[0]) / h, fy = (p[1] - lo[1]) / h, fz = (p[2] - lo[2]) / h;
+    const fx = (px - lo[0]) / h, fy = (py - lo[1]) / h, fz = (pz - lo[2]) / h;
     if (fx < 0 || fy < 0 || fz < 0 || fx >= dim[0] - 1 || fy >= dim[1] - 1 || fz >= dim[2] - 1) return 1;
     const x = Math.floor(fx), y = Math.floor(fy), z = Math.floor(fz);
     const tx = fx - x, ty = fy - y, tz = fz - z;
@@ -112,14 +115,69 @@ export class VoxelSDF {
     return (c00 * (1 - ty) + c10 * ty) * (1 - tz) + (c01 * (1 - ty) + c11 * ty) * tz;
   }
 
-  grad(p) {
+  grad(p) { const g = [0, 0, 0]; this.g3(p[0], p[1], p[2], g); return g; }
+
+  /** Normalized gradient into out[0..2]. */
+  g3(x, y, z, out) {
     const e = this.h * 0.6;
-    return norm([
-      this.sample([p[0] + e, p[1], p[2]]) - this.sample([p[0] - e, p[1], p[2]]),
-      this.sample([p[0], p[1] + e, p[2]]) - this.sample([p[0], p[1] - e, p[2]]),
-      this.sample([p[0], p[1], p[2] + e]) - this.sample([p[0], p[1], p[2] - e]),
-    ]);
+    const gx = this.s3(x + e, y, z) - this.s3(x - e, y, z);
+    const gy = this.s3(x, y + e, z) - this.s3(x, y - e, z);
+    const gz = this.s3(x, y, z + e) - this.s3(x, y, z - e);
+    const l = Math.sqrt(gx * gx + gy * gy + gz * gz) || 1;
+    out[0] = gx / l; out[1] = gy / l; out[2] = gz / l;
+    return out;
   }
+}
+
+// Groom directions of a style precomputed on a coarse world-space grid around the head,
+// so that combing during integration is a cheap trilinear lookup.
+class GroomGrid {
+  constructor(st, part, headM, headRot, center, half = 0.2, n = 22) {
+    this.n = n; this.h = (2 * half) / (n - 1);
+    this.lo = [center[0] - half, center[1] - half, center[2] - half];
+    const N = n * n * n;
+    this.d = new Float32Array(N * 4);
+    const Hinv = invertAffine(headM);
+    for (let z = 0; z < n; z++) for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      const p = [this.lo[0] + x * this.h, this.lo[1] + y * this.h, this.lo[2] + z * this.h];
+      const pr = mat4p(Hinv, p);
+      const rn = norm(sub(pr, HEAD_C));
+      const g = mat3v(headRot, scalpGroom(st, pr, rn, part));
+      const i = ((z * n + y) * n + x) * 4;
+      this.d[i] = g[0]; this.d[i + 1] = g[1]; this.d[i + 2] = g[2];
+      // long hair is combed only above the ears, short styles everywhere
+      this.d[i + 3] = Math.max(st.combLow || 0, smooth(0.66, 0.72, pr[1]));
+    }
+  }
+
+  /** Trilinear groom direction (normalized) into out, returns the weight (w). */
+  at(px, py, pz, out) {
+    const { n, h, lo, d } = this;
+    let fx = (px - lo[0]) / h, fy = (py - lo[1]) / h, fz = (pz - lo[2]) / h;
+    if (fx < 0 || fy < 0 || fz < 0 || fx >= n - 1 || fy >= n - 1 || fz >= n - 1) return 0;
+    const x = fx | 0, y = fy | 0, z = fz | 0;
+    fx -= x; fy -= y; fz -= z;
+    let ox = 0, oy = 0, oz = 0, ow = 0;
+    for (let c = 0; c < 8; c++) {
+      const cx = c & 1, cy = (c >> 1) & 1, cz = c >> 2;
+      const w = (cx ? fx : 1 - fx) * (cy ? fy : 1 - fy) * (cz ? fz : 1 - fz);
+      const i = (((z + cz) * n + y + cy) * n + x + cx) * 4;
+      ox += d[i] * w; oy += d[i + 1] * w; oz += d[i + 2] * w; ow += d[i + 3] * w;
+    }
+    const l = Math.sqrt(ox * ox + oy * oy + oz * oz) || 1;
+    out[0] = ox / l; out[1] = oy / l; out[2] = oz / l;
+    return ow;
+  }
+}
+
+function invertAffine(m) {
+  // column-major 4x4 with upper 3x3 = rotation * uniform scale
+  const a = [m[0], m[1], m[2], m[4], m[5], m[6], m[8], m[9], m[10]];
+  const s2 = a[0] * a[0] + a[1] * a[1] + a[2] * a[2];
+  const r = [a[0] / s2, a[3] / s2, a[6] / s2, a[1] / s2, a[4] / s2, a[7] / s2, a[2] / s2, a[5] / s2, a[8] / s2];
+  const t = [m[12], m[13], m[14]];
+  const it = [-(r[0] * t[0] + r[3] * t[1] + r[6] * t[2]), -(r[1] * t[0] + r[4] * t[1] + r[7] * t[2]), -(r[2] * t[0] + r[5] * t[1] + r[8] * t[2])];
+  return [r[0], r[1], r[2], 0, r[3], r[4], r[5], 0, r[6], r[7], r[8], 0, it[0], it[1], it[2], 1];
 }
 
 // ----------------------------------------------------------------- root sampling
@@ -166,9 +224,9 @@ export const HAIR_STYLES = {
   buzz: { label: 'Buzz Cut', length: 0.004, lift: 0.55, natural: 1, stiff: 1, K: 4, density: 1.4 },
   crew: { label: 'Kurzhaar', length: 0.03, lengthTop: 1.8, lengthSide: 0.35, lift: 0.45, natural: 0.4, forward: 0.6, stiff: 0.9, K: 7, frizz: 0.2 },
   textured: { label: 'Kurz strukturiert', length: 0.05, lengthTop: 1.6, lengthSide: 0.4, lift: 0.6, natural: 0.3, up: 0.6, forward: 0.4, stiff: 0.75, K: 9, frizz: 0.5, clump: 0.6 },
-  sidepart: { label: 'Seitenscheitel', length: 0.075, lengthTop: 1.3, lengthSide: 0.55, part: 0.45, side: 1, back: 0.4, lift: 0.25, stiff: 0.6, K: 12, clump: 0.5, gravity: 0.6 },
-  slick: { label: 'Zurückgekämmt', length: 0.09, lengthSide: 0.7, back: 1.2, lift: 0.12, stiff: 0.45, K: 14, clump: 0.55, gravity: 0.9, comb: 0.9 },
-  quiff: { label: 'Tolle', length: 0.065, lengthTop: 1.7, lengthSide: 0.35, back: 1.1, up: 0.55, lift: 0.5, stiff: 0.75, K: 14, clump: 0.7, gravity: 0.6, undercut: 0.7, comb: 0.5 },
+  sidepart: { label: 'Seitenscheitel', length: 0.075, lengthTop: 1.3, lengthSide: 0.55, part: 0.45, side: 1, back: 0.4, lift: 0.25, stiff: 0.6, K: 12, clump: 0.5, gravity: 0.6, combLow: 1 },
+  slick: { label: 'Zurückgekämmt', length: 0.09, lengthSide: 0.7, back: 1.2, lift: 0.08, stiff: 0.45, K: 14, clump: 0.55, gravity: 0.9, comb: 0.9, combLow: 1 },
+  quiff: { label: 'Tolle', length: 0.065, lengthTop: 1.7, lengthSide: 0.35, back: 1.1, up: 0.8, upFront: 1, lift: 0.3, stiff: 0.75, K: 14, clump: 0.7, gravity: 0.6, undercut: 0.7, comb: 0.6, combLow: 1 },
   bob: { label: 'Bob', length: 0.2, part: 0.0, side: 0.8, down: 1, lift: 0.18, stiff: 0.25, K: 20, clump: 0.45, gravity: 1, faceClear: 0.8, comb: 0.7 },
   bangs: { label: 'Pony & Bob', length: 0.2, part: 0.0, side: 0.3, down: 1, lift: 0.18, stiff: 0.25, K: 20, clump: 0.45, gravity: 1, bangs: 1, faceClear: 0.7, comb: 0.7 },
   long: { label: 'Lang glatt', length: 0.42, part: 0.15, side: 0.9, down: 1, back: 0.35, lift: 0.15, stiff: 0.15, K: 28, clump: 0.5, gravity: 1, faceClear: 1, comb: 0.8, behind: 0.7 },
@@ -194,10 +252,14 @@ function scalpGroom(st, rest, rn, part) {
   let groom = [0, 0, 0];
   groom = add(groom, scl([0, -1, 0], w('down')));
   groom = add(groom, scl([0, -0.3, -1], w('back')));
+  // short combed-back styles: the nape lies down instead of sticking out backwards
+  if (!st.gather) groom = add(groom, scl([0, -1, 0], w('back') * 1.2 * smooth(0.75, 0.69, rest[1])));
+  // short cuts: around and above the ears the hair lies down and back instead of flaring out
+  if (!st.gather && st.length < 0.15) groom = add(groom, scl([0, -1, -0.6], 1.5 * smooth(0.765, 0.715, rest[1]) * smooth(0.045, 0.07, Math.abs(q[0]))));
   groom = add(groom, scl([0, 0.2, 1], w('forward')));
-  groom = add(groom, scl([0, 1, 0], w('up')));
+  groom = add(groom, scl([0, 1, 0], w('up') * (st.upFront ? smooth(-0.01, 0.06, q[2]) : 1)));
   groom = add(groom, scl(rn, w('out')));
-  groom = add(groom, scl(sideDir, w('side') * (0.35 + nearPart)));
+  groom = add(groom, scl(sideDir, w('side') * (0.35 + nearPart) * smooth(0.69, 0.75, rest[1])));
   if (st.bangs) {
     const front = smooth(-0.02, 0.06, q[2]) * smooth(0.77, 0.81, rest[1]);
     groom = add(groom, scl([0, -0.5, 1.2], st.bangs * front * 3 * smooth(0.075, 0.04, Math.abs(q[0] - part * 0.045))));
@@ -226,7 +288,8 @@ function scalpGroom(st, rest, rn, part) {
 export function generate(job) {
   const { kind } = job;
   if (kind === 'lash') return generateLashes(job);
-  const P = job.params;
+  // shape parameters that only the scalp UI sets default to neutral for the other kinds
+  const P = { clump: 1, curl: 1, wave: 1, frizz: 1, gravity: 1, volume: 0, ...job.params };
   const rand = mulberry32((P.seed || 1) * 1000 + kind.length * 7919);
   const mesh = job.mesh;
   const st = kind === 'scalp' ? { ...(HAIR_STYLES[P.style] || HAIR_STYLES.long) } : {};
@@ -238,7 +301,7 @@ export function generate(job) {
     count = Math.round(P.count * (st.density || 1) * P.density);
     stiff = st.stiff ?? 0.5; gravity = (st.gravity ?? 1) * P.gravity; lift = (st.lift ?? 0.2) + P.volume * 0.3;
   } else if (kind === 'brow') {
-    baseLen = 0.0085 * P.length; K = 5; count = Math.round(1300 * P.density); stiff = 0.9; gravity = 0; lift = 0.12;
+    baseLen = 0.0085 * P.length; K = 5; count = Math.round(1550 * P.density); stiff = 0.9; gravity = 0; lift = 0.12;
   } else if (kind === 'beard') {
     baseLen = P.length; K = baseLen < 0.004 ? 3 : Math.min(14, 4 + Math.round(baseLen / 0.006));
     count = Math.round(16000 * P.density); stiff = 0.6; gravity = 0.4; lift = baseLen < 0.004 ? 0.55 : 0.3;
@@ -276,24 +339,33 @@ export function generate(job) {
     const cell = clumpSpacing;
     const hash = new Map();
     guides = [];
+    const key = (x, y, z) => ((x + 1024) * 2048 + (y + 1024)) * 2048 + (z + 1024);
+    const cellOf = (ri) => [Math.floor(ri.rp[0] / cell), Math.floor(ri.rp[1] / cell), Math.floor(ri.rp[2] / cell)];
     rootInfo.forEach((ri, i) => {
-      const key = ri.rp.map((v) => Math.floor(v / cell)).join(',');
-      if (!hash.has(key)) { hash.set(key, guides.length); guides.push(i); }
+      const c = cellOf(ri), k = key(c[0], c[1], c[2]);
+      if (!hash.has(k)) { hash.set(k, guides.length); guides.push(i); }
     });
     guideOf = new Int32Array(N);
     rootInfo.forEach((ri, i) => {
-      const c = ri.rp.map((v) => Math.floor(v / cell));
+      const c = cellOf(ri);
       let best = -1, bd = Infinity;
       for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
-        const g = hash.get(`${c[0] + dx},${c[1] + dy},${c[2] + dz}`);
+        const g = hash.get(key(c[0] + dx, c[1] + dy, c[2] + dz));
         if (g === undefined) continue;
-        const d = len(sub(rootInfo[guides[g]].rp, ri.rp));
+        const q = rootInfo[guides[g]].rp;
+        const d = (q[0] - ri.rp[0]) ** 2 + (q[1] - ri.rp[1]) ** 2 + (q[2] - ri.rp[2]) ** 2;
         if (d < bd) { bd = d; best = g; }
       }
       guideOf[i] = best;
     });
   }
 
+  const comb = kind === 'scalp' ? (st.comb ?? 0.35) : 0;
+  const grid = comb > 0 && sdf && job.headM
+    ? new GroomGrid(st, P.part ?? st.part ?? 0, job.headM, headRot, mat4p(job.headM, HEAD_C)) : null;
+  const gtmp = [0, 0, 0], gn = [0, 0, 0];
+  const fwdW = mat3v(headRot, [0, 0, 1]);
+  const flat = kind === 'brow' || kind === 'body';
   const simulate = (i, out, curlPhase) => {
     const ri = rootInfo[i];
     const r1 = hashRand(i * 3 + 1), r2 = hashRand(i * 3 + 2), r3 = hashRand(i * 3 + 3);
@@ -339,9 +411,6 @@ export function generate(job) {
     const layer = r2;
     const minD = kind === 'scalp' ? 0.0015 + (P.volume * 0.012 + 0.002) * (0.3 + 0.7 * layer) : 0;
     out[0] = p[0]; out[1] = p[1]; out[2] = p[2];
-    const down = [0, -1, 0];
-    const comb = kind === 'scalp' ? (st.comb ?? 0.35) : 0;
-    const Hinv = job.headInv;
     // ponytail: strands are tied at a point behind the head and hang as one bundle
     const tie = st.gather && job.headM ? mat4p(job.headM, st.bun ? [0, 0.782, -0.078] : [0, 0.748, -0.083]) : null;
     let tiedAt = -1, tailS = 0;
@@ -349,17 +418,26 @@ export function generate(job) {
     for (let k = 1; k < K; k++) {
       const t = k / (K - 1);
       if (tie) {
-        if (tiedAt < 0 && len(sub(p, tie)) < 0.016 + 0.01 * r2) tiedAt = k;
+        if (tiedAt < 0 && len(sub(p, tie)) < 0.018 + 0.012 * r2) tiedAt = k;
+        if (tiedAt < 0 && t > 0.8) {
+          // the rare strand that never reaches the tie ends on the scalp instead of hanging loose
+          out[k * 3] = p[0]; out[k * 3 + 1] = p[1]; out[k * 3 + 2] = p[2];
+          continue;
+        }
         if (tiedAt >= 0 && st.bun) {
           // wrap around a torus-shaped knot sitting on the back of the head
           tailS += seg;
           const back = norm(mat3v(headRot, [0, 0.28, -1])), upv = norm(cross(mat3v(headRot, [1, 0, 0]), back));
           const sidev = cross(back, upv);
-          const R = 0.022 + 0.008 * tailRad;
-          const phi = tailAng + tailS / R;
-          const c = add(tie, scl(back, 0.036));
-          const ring = add(scl(upv, Math.cos(phi) * R), scl(sidev, Math.sin(phi) * R));
-          let q = add(add(c, ring), scl(back, (r2 - 0.5) * 0.024 + Math.sin(phi * 0.5) * 0.004));
+          // spindle torus (tube radius > ring radius) reads as a round knot with volume;
+          // strands wind around the ring and slowly around the tube
+          const R0 = 0.01, rt = 0.007 + 0.013 * tailRad;
+          const phi = tailAng + tailS / (R0 + rt * 0.7);
+          const th = r2 * Math.PI * 2 + (tailS / (rt + 0.004)) * 0.4;
+          const rr = R0 + rt * Math.cos(th);
+          const c = add(tie, scl(back, 0.03));
+          const ring = add(scl(upv, Math.cos(phi) * rr), scl(sidev, Math.sin(phi) * rr));
+          let q = add(add(c, ring), scl(back, Math.sin(th) * rt * 0.8));
           if (sdf) { const sdq = sdf.sample(q); if (sdq < 0.003) q = add(q, scl(sdf.grad(q), 0.003 - sdq)); }
           out[k * 3] = q[0]; out[k * 3 + 1] = q[1]; out[k * 3 + 2] = q[2];
           p = q;
@@ -378,48 +456,59 @@ export function generate(job) {
           p = q;
           continue;
         }
-        d = norm(add(d, scl(norm(sub(tie, p)), 0.6)));
+        // approach: steer to the tie, gravity only acts on the free tail
+        const toTie = sub(tie, p), dist = len(toTie);
+        d = norm(add(d, scl(toTie, (0.6 + 2.5 * t) / Math.max(dist, 1e-4))));
       }
+      // (scalar code from here on: this loop runs for every point of every strand)
+      let dx = d[0], dy = d[1], dz = d[2], l;
       // stiffness keeps the root direction, gravity pulls down further along the strand
-      const g = gravity * (1 - stiff * (1 - t) * 0.9) * seg * 18;
-      d = norm(add(d, scl(down, g)));
-      if (kind === 'brow' || kind === 'body') d = norm(add(d, scl(ri.n, -0.18)));   // lie flat
+      dy -= (tie ? 0.15 : 1) * gravity * (1 - stiff * (1 - t) * 0.9) * seg * 18;
+      l = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1; dx /= l; dy /= l; dz /= l;
+      if (flat) {   // brows / body hair lie flat on the skin
+        dx -= ri.n[0] * 0.18; dy -= ri.n[1] * 0.18; dz -= ri.n[2] * 0.18;
+        l = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1; dx /= l; dy /= l; dz /= l;
+      }
       // long hair: most of it falls behind the shoulders, held there by friction
       if (st.behind && k > 2) {
-        const below = smooth(job.neckY + 0.06, job.neckY - 0.02, p[1]);
-        const fwd = mat3v(headRot, [0, 0, 1]);
-        d = norm(add(d, scl(fwd, -st.behind * below * seg * 9 * (0.6 + 0.8 * r3))));
+        const f = -st.behind * smooth(job.neckY + 0.06, job.neckY - 0.02, p[1]) * seg * 9 * (0.6 + 0.8 * r3);
+        dx += fwdW[0] * f; dy += fwdW[1] * f; dz += fwdW[2] * f;
+        l = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1; dx /= l; dy /= l; dz /= l;
       }
       // combing: while close to the scalp, the strand follows the groom field along
       // the head surface before it is allowed to fall freely
-      if (comb > 0 && sdf && Hinv) {
-        const sdist = sdf.sample(p);
+      if (grid) {
+        const sdist = sdf.s3(p[0], p[1], p[2]);
         const zone = 0.018 + minD * 2;
         if (sdist < zone) {
-          const pr = mat4p(Hinv, p);
-          if (pr[1] > 0.66) {
-            const rn = norm(sub(pr, HEAD_C));
-            const gw = mat3v(headRot, scalpGroom(st, pr, rn, P.part ?? st.part ?? 0));
-            const w = comb * smooth(zone, zone * 0.4, sdist) * smooth(0.66, 0.72, pr[1]);
-            const gn = sdf.grad(p);
-            d = norm(add(scl(d, 1 - w * 0.7), scl(gw, w)));
-            d = norm(add(tangentOf(d, gn), scl(gn, Math.max(0, dot(d, gn)) * (1 - w))));
+          const gwt = grid.at(p[0], p[1], p[2], gtmp);
+          if (gwt > 0) {
+            const w = comb * smooth(zone, zone * 0.4, sdist) * gwt;
+            sdf.g3(p[0], p[1], p[2], gn);
+            dx = dx * (1 - w * 0.7) + gtmp[0] * w; dy = dy * (1 - w * 0.7) + gtmp[1] * w; dz = dz * (1 - w * 0.7) + gtmp[2] * w;
+            l = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1; dx /= l; dy /= l; dz /= l;
+            const dn = dx * gn[0] + dy * gn[1] + dz * gn[2];
+            const keep = Math.max(0, dn) * (1 - w) - dn;
+            dx += gn[0] * keep; dy += gn[1] * keep; dz += gn[2] * keep;
+            l = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1; dx /= l; dy /= l; dz /= l;
           }
         }
       }
-      let np = add(p, scl(d, seg));
+      let nx = p[0] + dx * seg, ny = p[1] + dy * seg, nz = p[2] + dz * seg;
       if (sdf) {
         const want = minD * smooth(0.0, 0.25, t) + 0.0012;
-        const sd = sdf.sample(np);
+        const sd = sdf.s3(nx, ny, nz);
         if (sd < want) {
-          const gr = sdf.grad(np);
-          np = add(np, scl(gr, want - sd));
-          d = norm(sub(np, p));
-          np = add(p, scl(d, seg));
+          sdf.g3(nx, ny, nz, gn);
+          nx += gn[0] * (want - sd); ny += gn[1] * (want - sd); nz += gn[2] * (want - sd);
+          dx = nx - p[0]; dy = ny - p[1]; dz = nz - p[2];
+          l = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1; dx /= l; dy /= l; dz /= l;
+          nx = p[0] + dx * seg; ny = p[1] + dy * seg; nz = p[2] + dz * seg;
         }
       }
-      p = np;
-      out[k * 3] = p[0]; out[k * 3 + 1] = p[1]; out[k * 3 + 2] = p[2];
+      p[0] = nx; p[1] = ny; p[2] = nz;
+      d[0] = dx; d[1] = dy; d[2] = dz;
+      out[k * 3] = nx; out[k * 3 + 1] = ny; out[k * 3 + 2] = nz;
     }
     return { L, layer, r1, r3, curlPhase };
   };
@@ -429,59 +518,75 @@ export function generate(job) {
   if (guides) {
     for (const gi of guides) {
       const out = new Float32Array(K * 3);
-      simulate(gi, out, hashRand(gi * 17) * Math.PI * 2);
-      guideShapes.set(gi, out);
+      const info = simulate(gi, out, hashRand(gi * 17) * Math.PI * 2);
+      guideShapes.set(gi, { out, info });
     }
   }
 
   const curlR = (st.curl || 0) * P.curl + (P.curlExtra || 0), curlF = st.curlFreq || 30;
   const waveA = (st.wave || 0) * P.wave + (P.waveExtra || 0) * 0.015, waveF = st.waveFreq || 8;
   const frizz = (st.frizz || 0.1) * P.frizz;
-  const shape = new Float32Array(K * 3);
+  const frizzK = frizz * 0.004 * (kind === 'scalp' ? 1 : 0.4);
+  const own = new Float32Array(K * 3);
   for (let i = 0; i < N; i++) {
     const gIdx = guides ? guides[guideOf[i]] : -1;
     const phase = gIdx >= 0 ? hashRand(gIdx * 17) * Math.PI * 2 : hashRand(i * 13) * Math.PI * 2;
-    const info = simulate(i, shape, phase);
-    const g = gIdx >= 0 ? guideShapes.get(gIdx) : null;
-    // frame along the strand for curls/waves
-    let T = norm([shape[3] - shape[0], shape[4] - shape[1], shape[5] - shape[2]]);
-    let B1 = norm(cross(T, Math.abs(T[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]));
+    const gs = gIdx >= 0 ? guideShapes.get(gIdx) : null;
+    const isGuide = gs && gIdx === i;
+    const shape = isGuide ? gs.out : own;
+    const info = isGuide ? gs.info : simulate(i, own, phase);
+    const g = gs && !isGuide ? gs.out : null;
+    // frame along the strand for curls/waves (B1 is parallel transported)
+    let tx = shape[3] - shape[0], ty = shape[4] - shape[1], tz = shape[5] - shape[2], l;
+    l = Math.sqrt(tx * tx + ty * ty + tz * tz) || 1; tx /= l; ty /= l; tz /= l;
+    let bx, by, bz;
+    if (Math.abs(ty) < 0.9) { bx = -tz; by = 0; bz = tx; } else { bx = 0; by = tz; bz = -ty; }
+    l = Math.sqrt(bx * bx + by * by + bz * bz) || 1; bx /= l; by /= l; bz /= l;
     let s = 0;
+    const segL = info.L / (K - 1);
     const base = i * K * 4;
     for (let k = 0; k < K; k++) {
-      const t = k / (K - 1);
-      let p = [shape[k * 3], shape[k * 3 + 1], shape[k * 3 + 2]];
+      const t = k / (K - 1), k3 = k * 3;
+      let px = shape[k3], py = shape[k3 + 1], pz = shape[k3 + 2];
       if (k > 0) {
-        const Tn = norm([shape[k * 3] - shape[k * 3 - 3], shape[k * 3 + 1] - shape[k * 3 - 2], shape[k * 3 + 2] - shape[k * 3 - 1]]);
-        // parallel transport of B1
-        B1 = norm(tangentOf(B1, Tn));
-        T = Tn;
-        s += info.L / (K - 1);
+        tx = px - shape[k3 - 3]; ty = py - shape[k3 - 2]; tz = pz - shape[k3 - 1];
+        l = Math.sqrt(tx * tx + ty * ty + tz * tz) || 1; tx /= l; ty /= l; tz /= l;
+        const bd = bx * tx + by * ty + bz * tz;
+        bx -= tx * bd; by -= ty * bd; bz -= tz * bd;
+        l = Math.sqrt(bx * bx + by * by + bz * bz) || 1; bx /= l; by /= l; bz /= l;
+        s += segL;
       }
-      const B2 = cross(T, B1);
-      if (g && gIdx !== i) {
+      const cx = ty * bz - tz * by, cy = tz * bx - tx * bz, cz = tx * by - ty * bx;   // B2 = T x B1
+      if (g) {
         // pull towards the guide shape (offset by the root difference that fades out)
-        const gp = [g[k * 3], g[k * 3 + 1], g[k * 3 + 2]];
-        const rootOff = sub([shape[0], shape[1], shape[2]], [g[0], g[1], g[2]]);
-        const target = add(gp, scl(rootOff, 1 - t * 0.85));
-        p = mix(p, target, clumpAmt * Math.pow(t, 0.6));
+        const ro = 1 - t * 0.85, m = clumpAmt * Math.pow(t, 0.6);
+        px += (g[k3] + (shape[0] - g[0]) * ro - px) * m;
+        py += (g[k3 + 1] + (shape[1] - g[1]) * ro - py) * m;
+        pz += (g[k3 + 2] + (shape[2] - g[2]) * ro - pz) * m;
       }
       const ramp = smooth(0.0, 0.25, t);
       if (curlR > 0) {
         const a = s * curlF * Math.PI * 2 + info.curlPhase;
         const r = curlR * ramp * (0.8 + 0.4 * info.r3);
-        p = add(p, add(scl(B1, Math.cos(a) * r), scl(B2, Math.sin(a) * r)));
+        const ca = Math.cos(a) * r, sa = Math.sin(a) * r;
+        px += bx * ca + cx * sa; py += by * ca + cy * sa; pz += bz * ca + cz * sa;
       }
-      if (waveA > 0) p = add(p, scl(B1, Math.sin(s * waveF * Math.PI * 2 + info.curlPhase) * waveA * ramp));
-      if (frizz > 0) {
-        const f = frizz * 0.004 * t * t * (kind === 'scalp' ? 1 : 0.4);
-        p = add(p, [(hashRand(i * 91 + k * 7) - 0.5) * f, (hashRand(i * 37 + k * 11) - 0.5) * f, (hashRand(i * 53 + k * 13) - 0.5) * f]);
+      if (waveA > 0) {
+        const w = Math.sin(s * waveF * Math.PI * 2 + info.curlPhase) * waveA * ramp;
+        px += bx * w; py += by * w; pz += bz * w;
+      }
+      if (frizzK > 0) {
+        const f = frizzK * t * t;
+        px += (hashRand(i * 91 + k * 7) - 0.5) * f; py += (hashRand(i * 37 + k * 11) - 0.5) * f; pz += (hashRand(i * 53 + k * 13) - 0.5) * f;
       }
       if (sdf && k > 0) {
-        const sd = sdf.sample(p);
-        if (sd < 0.0012) p = add(p, scl(sdf.grad(p), 0.0012 - sd));
+        const sd = sdf.s3(px, py, pz);
+        if (sd < 0.0012) {
+          sdf.g3(px, py, pz, gn);
+          px += gn[0] * (0.0012 - sd); py += gn[1] * (0.0012 - sd); pz += gn[2] * (0.0012 - sd);
+        }
       }
-      pts[base + k * 4] = p[0]; pts[base + k * 4 + 1] = p[1]; pts[base + k * 4 + 2] = p[2]; pts[base + k * 4 + 3] = t;
+      pts[base + k * 4] = px; pts[base + k * 4 + 1] = py; pts[base + k * 4 + 2] = pz; pts[base + k * 4 + 3] = t;
     }
     const ri = rootInfo[i];
     const rt = roots[i].tri * 3;
@@ -525,11 +630,12 @@ function generateLashes(job) {
   for (const line of lines) {
     const c = eyeCenters[line.side];
     const upper = line.upper;
-    const n = Math.round((upper ? 120 : 70) * P.density);
+    const n = Math.round((upper ? 115 : 45) * P.density);
     const pts = line.points;                        // posed points along the lid margin
     const cum = [0];
     for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + len(sub(pts[i], pts[i - 1])));
     const total = cum[cum.length - 1];
+    const fwd = job.fwd || [0, 0, 1];
     for (let j = 0; j < n; j++) {
       const s = ((j + rand() * 0.8) / n) * total;
       let i = 1;
@@ -541,16 +647,20 @@ function generateLashes(job) {
       const radial = norm(sub(root, c));
       const lidUp = upper ? job.up : scl(job.up, -1);
       const prof = Math.sin(Math.min(1, Math.max(0, u)) * Math.PI);
-      const L = (upper ? 0.0105 : 0.006) * P.length * (0.45 + 0.55 * Math.pow(prof, 0.6)) * (0.85 + 0.3 * rand());
-      let d = norm(add(scl(radial, 0.85), scl(lidUp, 0.35 + P.curl * 0.2)));
-      d = norm(add(d, scl(along, (u - 0.45) * 0.5)));       // fan out towards the corners
+      const L = (upper ? 0.0105 : 0.0055) * P.length * (0.45 + 0.55 * Math.pow(prof, 0.6)) * (0.85 + 0.3 * rand());
+      // lashes leave the lid margin pointing forward and curl away from the eye
+      let d = upper
+        ? norm(add(add(scl(fwd, 1), scl(radial, 0.35)), scl(lidUp, 0.05 + 0.05 * P.curl)))
+        : norm(add(add(scl(fwd, 1), scl(radial, 0.3)), scl(lidUp, 0.15)));
+      d = norm(add(d, scl(along, (u - 0.45) * 0.6)));       // fan out towards the corners
+      const curlStep = upper ? 0.12 + P.curl * 0.13 : 0.04 + P.curl * 0.04;
       const seg = L / (K - 1);
       // lashes emerge from the anterior lid margin, slightly in front of the helper row
-      let p = add(add(root, scl(radial, 0.0009)), scl(lidUp, 0.0004));
+      let p = add(add(root, scl(radial, 0.0009)), scl(lidUp, upper ? -0.0003 : -0.0002));
       const base = out.length;
       for (let k = 0; k < K; k++) {
         if (k > 0) {
-          d = norm(add(d, scl(lidUp, (0.16 + P.curl * 0.18))));
+          d = norm(add(d, scl(lidUp, curlStep)));
           p = add(p, scl(d, seg));
         }
         out.push(p[0], p[1], p[2], k / (K - 1));

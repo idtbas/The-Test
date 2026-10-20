@@ -104,7 +104,8 @@ export function beardDensity(p, z) {
   const front = smooth(0.02, 0.05, zz) * smooth(0.075, 0.066, x) * smooth(0.075, 0.09, zz + (0.07 - x) * 0.0);
   // cheek line: sideburn bottom -> above mouth corner
   const tx = Math.min(1, Math.max(0, (0.072 - x) / 0.042));
-  const cheekLineY = 0.712 - tx * 0.04 + (z.high ? 0.008 : 0);
+  // concave line from the sideburn down to the mouth corner
+  const cheekLineY = 0.712 - Math.pow(tx, 0.8) * 0.05 + (z.high ? 0.008 : 0);
   const belowCheek = smooth(cheekLineY + 0.004, cheekLineY - 0.004, y);
   const lipTop = 0.6705, lipBot = 0.6488;
   const mouthW = 0.027;
