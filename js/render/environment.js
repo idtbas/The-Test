@@ -183,7 +183,22 @@ export class Stage {
     geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     geo.setIndex(idx);
     geo.computeVertexNormals();
-    this.backdropMat = withSSAO(new THREE.MeshStandardMaterial({ color: 0x5b5f66, roughness: 0.92, metalness: 0 }), skinUniforms, 'backdrop');
+    const domeCol = { value: new THREE.Color(0x5b5f66) };
+    const DOME_K = 'float domeK(vec3 d) { float y = normalize(d).y; return mix(0.55, 0.85, smoothstep(-0.2, 0.25, y)) * mix(1.0, 0.7, smoothstep(0.3, 0.9, y)); }';
+    const bd = new THREE.MeshStandardMaterial({ color: 0x5b5f66, roughness: 0.92, metalness: 0 });
+    // towards its far edges the backdrop fades into the dome, so orbiting never shows a seam
+    bd.onBeforeCompile = (shader) => {
+      shader.uniforms.uDomeCol = domeCol;
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vBdW;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvBdW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vBdW;\nuniform vec3 uDomeCol;\n' + DOME_K)
+        .replace('#include <opaque_fragment>', `#include <opaque_fragment>
+          float edge = max(max(smoothstep(6.0, 13.0, abs(vBdW.x)), smoothstep(4.0, 8.5, vBdW.z)), smoothstep(4.5, 8.5, vBdW.y));
+          gl_FragColor.rgb = mix(gl_FragColor.rgb, uDomeCol * domeK(vBdW), edge);`);
+    };
+    this.backdropMat = withSSAO(bd, skinUniforms, 'backdrop');
     this.backdrop = new THREE.Mesh(geo, this.backdropMat);
     this.backdrop.receiveShadow = true;
     this.backdrop.layers.enable(LAYER_AO);
@@ -191,11 +206,11 @@ export class Stage {
     // studio dome so that no view direction ends in the void
     this.domeMat = new THREE.ShaderMaterial({
       side: THREE.BackSide, depthWrite: false,
-      uniforms: { uCol: { value: new THREE.Color(0x5b5f66) } },
+      uniforms: { uCol: domeCol },
       vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
       fragmentShader: `uniform vec3 uCol; varying vec3 vP;
-        void main(){ float y = normalize(vP).y; float k = mix(0.55, 0.85, smoothstep(-0.2, 0.25, y)) * mix(1.0, 0.7, smoothstep(0.3, 0.9, y));
-          gl_FragColor = vec4(uCol * k, 1.0); }`,
+        ${DOME_K}
+        void main(){ gl_FragColor = vec4(uCol * domeK(vP), 1.0); }`,
     });
     this.dome = new THREE.Mesh(new THREE.SphereGeometry(28, 48, 24), this.domeMat);
     this.dome.renderOrder = -10;

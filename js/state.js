@@ -169,9 +169,9 @@ export const PRESETS = {
   giant: {
     label: 'Riese', icon: '🗿',
     s: { clothing: { top: 'none', bottom: 'shorts', bottomColor: '#3b3a33', bottomRough: 0.95 },
-      human: { macros: { ...MACRO_DEFAULTS, gender: 1.1, age: 0.62, muscle: 1.1, weight: 0.9, height: 1.45, proportions: 0.3 },
+      human: { macros: { ...MACRO_DEFAULTS, gender: 1.1, age: 0.62, muscle: 1.15, weight: 0.95, height: 1.25, proportions: 0.3 },
       mods: { 'head/head-scale-horiz|decr|incr': -0.4, 'chin/chin-prominent|decr|incr': 1.4, 'chin/chin-width|decr|incr': 1.2, 'eyebrows/eyebrows-trans|backward|forward': 1.5, 'nose/nose-scale-horiz|decr|incr': 0.8, 'nose/nose-hump|decr|incr': 1.2 } },
-      bones: { hand: 1.3, foot: 1.25, jaw: 1.15, chestW: 1.15 },
+      bones: { hand: 1.3, foot: 1.25, jaw: 1.15, chestW: 1.25, chestD: 1.15, clavicle: 1.15, neckT: 1.3, humerusT: 1.3, ulnaT: 1.25, femurT: 1.3, tibiaT: 1.25 },
       skin: { melanin: 0.32, hemo: 0.62, mottle: 2.2, scars: 0.8, moles: 0.8 },
       hair: H({ style: 'long', eumelanin: 5, length: 0.8, frizz: 3, beardStyle: 'full', beardLength: 0.05, beardEu: 5, bodyHair: { arms: 0.9, legs: 1, chest: 1, belly: 0.8 } }) },
   },

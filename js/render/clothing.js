@@ -61,9 +61,14 @@ function topMask(kind, p, g) {
       return inside(either(band, strap, back), (0.15 - armW) * W, (0.05 - g.neck) * W, 0.18 - ax);
     }
     case 'tank': {
-      const scoop = inside(y - 0.47, z - 0.04, 0.075 - (y - 0.47) * 0.2 - ax);
-      const armhole = inside(ax - 0.135, y - 0.38);
-      return inside(between(y, 0.105, 0.58), (0.12 - armW) * W, (0.25 - g.neck) * W, (0.75 - sh) * W, -scoop, -armhole);
+      const scoop = inside(y - 0.45, z - 0.03, 0.075 - (y - 0.45) * 0.25 - ax);
+      const back = inside(y - 0.49, -z - 0.02, 0.08 - ax);
+      const armhole = inside(ax - 0.125, y - 0.37);
+      const torso = inside(between(y, 0.105, 0.6), (0.12 - armW) * W, (0.4 - g.neck) * W, -scoop, -back, -armhole);
+      // straps over the shoulders: the upper-arm weights reach far onto the shoulder, so
+      // they get a looser limit here than on the body of the shirt
+      const strap = inside(between(ax, 0.077, 0.118), y - 0.42, (0.4 - armW) * W, (0.45 - g.neck) * W);
+      return either(torso, strap);
     }
     case 'tshirt': {
       const neck = inside(y - 0.5, z - 0.05, 0.06 - ax);
