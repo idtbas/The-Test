@@ -117,7 +117,7 @@ void main() {
     float r = pow(sqrt(max(0.0, 1.0 - th1 * th1)), 90.0 * roughK) * uSpec;
     float trt = pow(sqrt(max(0.0, 1.0 - th2 * th2)), 26.0 * roughK) * uSpec2 * sparkle;
     float tt = pow(clamp(dot(-L, V), 0.0, 1.0), 5.0) * uTT * (1.0 - abs(TL));
-    vec3 c = base * diff * 0.85 + vec3(r) * 0.18 + base * trt * 0.9 + base * base * tt * 2.5 + uSheen * base * pow(1.0 - abs(dot(N, V)), 4.0);
+    vec3 c = base * diff * 0.85 + vec3(r) * 0.18 + base * trt * 0.9 + base * base * tt * 2.5 + uSheen * base * pow(max(0.0, 1.0 - abs(dot(N, V))), 4.0);
     col += dl.color * sh * c * RECIPROCAL_PI;
     }
   }

@@ -45,18 +45,23 @@ async function start() {
   // iPad Safari: keep pinch/double-tap gestures for the 3D view, never zoom the page
   for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
   canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
-  let lastTouch = 0;
-  document.addEventListener('touchend', (e) => { const now = Date.now(); if (now - lastTouch < 300) e.preventDefault(); lastTouch = now; }, { passive: false });
+  // double-tap zoom is disabled with touch-action in the CSS: cancelling touchend here would
+  // also swallow the click of quick repeated taps on buttons (undo, chips, ...)
 
-  // adaptive resolution: if continuous rendering stays slow, step the render scale down
-  let slow = 0, lastT = performance.now();
+  // adaptive resolution: if interactive rendering stays slow, step the render scale down.
+  // "Slow" is relative to the display cadence learned from idle frames, so a 30 Hz rAF cap
+  // (Low Power Mode, thermal mitigation) is not mistaken for a slow GPU.
+  let slow = 0, lastT = performance.now(), cadence = 16.7;
   const loop = () => {
     const now = performance.now();
-    const rendered = app.accum <= 1;
+    const dt = now - lastT;
+    lastT = now;
+    const interactive = app.accum <= 1;
+    const before = app.lastRender;
     app.frame();
-    if (rendered && app.autoQuality) {
-      const dt = now - lastT;
-      slow = dt > 30 ? slow + 1 : Math.max(0, slow - 2);
+    if (app.lastRender === before) cadence = cadence * 0.9 + Math.min(dt, 50) * 0.1;
+    if (interactive && app.autoQuality) {
+      slow = dt > Math.max(36, cadence * 1.6) ? slow + 1 : Math.max(0, slow - 2);
       if (slow > 45 && app.renderer.settings.scale > 0.6) {
         app.renderer.settings.scale = Math.max(0.6, app.renderer.settings.scale - 0.12);
         app.resize();
@@ -64,7 +69,6 @@ async function start() {
         window.ui?.toast(`Auflösung automatisch auf ${Math.round(app.renderer.settings.scale * 100)} % reduziert`);
       }
     }
-    lastT = now;
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);

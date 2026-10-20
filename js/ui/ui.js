@@ -772,14 +772,22 @@ class EditorUI {
   }
 
   importFile() {
+    // iOS Safari: a file input that is not in the document can be collected while the
+    // picker is open, and then 'change' never fires
+    this._importInput?.remove();
     const inp = document.createElement('input');
     inp.type = 'file'; inp.accept = 'application/json,.json';
+    inp.style.display = 'none';
+    document.body.append(inp);
+    this._importInput = inp;
     inp.addEventListener('change', async () => {
       const f = inp.files[0];
+      inp.remove();
       if (!f) return;
       try {
         setState(this.app, JSON.parse(await f.text()));
         this.history.commit();
+        this._refit();
         this.toast('Charakter geladen');
       } catch { this.toast('Datei konnte nicht gelesen werden'); }
     });

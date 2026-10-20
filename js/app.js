@@ -214,6 +214,7 @@ export class App {
       this.baker.dirty = true;
     }
     const sv = ch.shapeVersion;
+    if (sv !== this._lastShape || ch.poseVersion !== this._lastPoseH) { this._height = ch.height; this._lastPoseH = ch.poseVersion; }
     this.hair?.onGeometryChanged(sv !== this._lastShape);
     this._lastShape = sv;
     this.emit('geometry');
@@ -243,10 +244,11 @@ export class App {
   focusShadows() {
     const t = this.controls.target;
     const d = this.camera.position.distanceTo(t);
-    const r = THREE.MathUtils.clamp(d * 0.42, 0.22, 1.25);
+    const full = Math.max(1.25, (this._height || 1.75) * 0.62);    // giants need a larger frustum
+    const r = THREE.MathUtils.clamp(d * 0.42, 0.22, full);
     // keep the feet inside the shadow frustum for full body views
     const c = r > 0.9 ? new THREE.Vector3(0, Math.max(t.y, 0.9), 0) : t.clone();
-    this.stage.setFocus(c, r > 0.9 ? 1.25 : r);
+    this.stage.setFocus(c, r > 0.9 ? full : r);
   }
 
   frame() {
@@ -267,7 +269,7 @@ export class App {
     if (hard || soft || this.accum < this.maxAccum) {
       this.focusShadows();
       this.hair.setFrame(this.accum);
-      this.renderer.render(this.scene, this.camera, this.renderer.settings.sss ? this.skinMatPass1 : null, this.accum);
+      this.renderer.render(this.scene, this.camera, this.renderer.settings.sss ? this.skinMatPass1 : null, this.accum, hard || soft);
       this.accum++;
       this.dirty = false;
       this.softDirty = false;
@@ -297,7 +299,7 @@ export class App {
     this.focusShadows();
     for (let i = 0; i < samples; i++) {
       this.hair.setFrame(i);
-      this.renderer.render(this.scene, this.camera, this.renderer.settings.sss ? this.skinMatPass1 : null, i);
+      this.renderer.render(this.scene, this.camera, this.renderer.settings.sss ? this.skinMatPass1 : null, i, i === 0);
     }
     this.accum = samples;
   }

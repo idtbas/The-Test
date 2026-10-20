@@ -349,7 +349,8 @@ export class HairSystem {
     if (N > 0) {
       const W = 4096;
       const H = Math.ceil((N * K) / W);
-      const data = new Float32Array(W * H * 4); data.set(pts);
+      let data = pts;                     // the worker pads to whole rows already
+      if (data.length !== W * H * 4) { data = new Float32Array(W * H * 4); data.set(pts); }
       const tex = new THREE.DataTexture(data, W, H, THREE.RGBAFormat, THREE.FloatType);
       tex.needsUpdate = true;
       const AH = Math.ceil(N / W);
@@ -375,7 +376,8 @@ export class HairSystem {
     s.mat.uniforms.uDelta.value.multiplyMatrices(Hn, s.genHeadInv);
     if (info.kind !== 'scalp') s.mat.uniforms.uDelta.value.identity();
     s.rootIdx = msg.res.rootIdx; s.rootW = msg.res.rootW; s.genPos = info.pos;
-    s.basePts = s.mesh ? new Float32Array(s.tex.image.data) : null;
+    // only strands that follow the skin (brows, lashes, beard) need their generated positions
+    s.basePts = s.mesh && FOLLOW.includes(info.kind) ? new Float32Array(s.tex.image.data) : null;
     if (FOLLOW.includes(info.kind)) this._follow(info.kind);
     this.app.requestRender();
     this.app.emit('hair');

@@ -215,6 +215,9 @@ in vec2 vUv;
 out vec4 outColor;
 void main() {
   vec3 c = texture(tCur, vUv).rgb;
+  // a reset frame must not read the history at all: mix(p, c, 1.0) is still NaN when p is,
+  // so a single bad pixel would otherwise survive every reset
+  if (uW >= 1.0) { outColor = vec4(c, 1.0); return; }
   vec3 p = texture(tPrev, vUv).rgb;
   outColor = vec4(mix(p, c, uW), 1.0);
 }`;
@@ -309,7 +312,7 @@ export class Renderer {
   constructor(canvas, skinUniforms) {
     const gl = new THREE.WebGLRenderer({
       canvas, antialias: false, alpha: false, powerPreference: 'high-performance',
-      preserveDrawingBuffer: false, stencil: false, depth: true,
+      preserveDrawingBuffer: false, stencil: false, depth: false,   // the canvas only gets the final composite
     });
     gl.shadowMap.enabled = true;
     gl.shadowMap.type = THREE.PCFShadowMap;
@@ -420,7 +423,8 @@ export class Renderer {
    * accum: 0 = fresh frame, n > 0 = n-th jittered sample blended into the history
    * (progressive supersampling while the view is still).
    */
-  render(scene, camera, skinPassMaterial, accum = 0) {
+  /** updateShadows: false while only accumulating jittered samples of an unchanged scene. */
+  render(scene, camera, skinPassMaterial, accum = 0, updateShadows = true) {
     const gl = this.gl, st = this.settings;
     this.frame++;
     camera.updateMatrixWorld();
@@ -433,7 +437,7 @@ export class Renderer {
     }
     const prevMask = camera.layers.mask;
     const prevBg = scene.background;
-    gl.shadowMap.needsUpdate = true;
+    gl.shadowMap.needsUpdate = updateShadows || accum === 0;
 
     // ---- normal/depth prepass for AO
     const U = this.skinUniforms;
