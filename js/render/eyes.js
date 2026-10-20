@@ -8,7 +8,7 @@ import { withSSAO } from './skinMaterial.js';
 export const EYE_DEFAULTS = {
   irisColor1: '#6b4a2b', irisColor2: '#3d6b8a', irisColorR1: '#6b4a2b', irisColorR2: '#3d6b8a',
   irisMix: 0.35, irisSize: 1.0, pupil: 0.35, pupilShape: 0.0, limbus: 0.65, irisDetail: 1.0,
-  sclera: '#e8ddd4', scleraVeins: 0.3, heterochromia: false, glow: 0.0, seed: 0.5,
+  sclera: '#d9cdc2', scleraVeins: 0.3, heterochromia: false, glow: 0.0, seed: 0.5,
 };
 
 const PARS = /* glsl */`
@@ -71,6 +71,7 @@ vec3 eyeColor(vec3 p, vec3 Vl, out float irisMask) {
   // towards the corners the conjunctiva gets pinker, above/below it is shadowed and greyer
   scl = mix(scl, scl * vec3(1.0, 0.8, 0.78), smoothstep(0.35, 0.9, abs(p.x)) * 0.45);
   scl = mix(scl, scl * vec3(0.86, 0.88, 0.94), smoothstep(0.3, 0.8, abs(p.y)) * 0.5);
+  scl *= 1.0 - smoothstep(0.15, 0.7, p.y) * 0.3;          // the upper lid shadows the eyeball
   // corneal limbus: soft bluish-grey transition into the sclera
   float lim = smoothstep(1.25, 1.0, r) * smoothstep(0.95, 1.05, r);
   scl = mix(scl, vec3(0.45, 0.48, 0.52) * luma(scl) * 1.6, lim * 0.35 * uLimbus);

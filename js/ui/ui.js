@@ -68,6 +68,16 @@ class EditorUI {
     setInterval(() => this._updateBusy(), 400);
     addEventListener('resize', () => setTimeout(() => this._updateInset(), 50));
     this._updateInset();
+    // a manual orbit/zoom ends the preset framing
+    app.controls.addEventListener('start', () => { this.camMode = null; this.camButtons.forEach((b) => b.classList.remove('active')); });
+    const q = new URLSearchParams(location.search);
+    // frame the body once it has its final shape (after the first frames and once all
+    // morph targets have streamed in), unless the user already moved the camera
+    if (!q.has('c') && !q.has('cam')) {
+      this.camMode = 'full';
+      this._refit(true);
+      app.on((t) => { if (t === 'targets' && this.camMode === 'full') this._refit(true); });
+    }
     this.select(this.cat);
     this._updateToolbar();
     this._updateInfo();
@@ -340,6 +350,7 @@ class EditorUI {
       t.addEventListener('click', () => {
         setState(a, { ...getState(a), human: { macros: {}, mods: {}, expression: {} }, bones: {}, ...JSON.parse(JSON.stringify(p.s)) });
         this.history.commit();
+        this._refit();
         this.toast(`Vorlage „${p.label}" geladen`);
       });
       grid.append(t);
@@ -693,12 +704,14 @@ class EditorUI {
   // ------------------------------------------------------------- actions
   randomize(extreme) {
     setState(this.app, randomState(this.app, extreme));
+    this._refit();
     this.history.commit();
     this.toast(extreme ? 'Extremer Zufallscharakter' : 'Neuer Zufallscharakter');
   }
 
-  cameraTo(id) {
+  cameraTo(id, instant = false) {
     const a = this.app, ch = a.character;
+    this.camMode = id;
     const head = ch.bonePos('head');
     const eyeY = (ch.eyeCenter.L[1] * 0.1 - ch.groundY);
     const h = ch.height;
@@ -709,7 +722,31 @@ class EditorUI {
     else if (id === 'eyes') { tgt = [0, eyeY, 0.1]; pos = [0.02, eyeY + 0.005, 0.36]; fov = 22; }
     else { tgt = [0, h * 0.53, 0]; pos = [0, h * 0.6, -h * 2.75]; }
     this.camButtons.forEach((b, i) => b.classList.toggle('active', ['full', 'upper', 'face', 'eyes', 'back'][i] === id));
-    animateCamera(a, new THREE.Vector3(...pos), new THREE.Vector3(...tgt), fov);
+    // the framings are made for an unobstructed view: move back so they fit into the part
+    // of the screen the panel leaves free (in portrait the bottom sheet covers ~45 %)
+    const k = this._fitScale();
+    const P = new THREE.Vector3(...pos), T = new THREE.Vector3(...tgt);
+    P.sub(T).multiplyScalar(k).add(T);
+    if (instant) {
+      a.camera.position.copy(P); a.controls.target.copy(T);
+      a.camera.fov = fov; a.camera.updateProjectionMatrix(); a.controls.update(); a.requestRender();
+    } else animateCamera(a, P, T, fov);
+  }
+
+  _fitScale() {
+    const el = this.app.canvas.parentElement, w = el.clientWidth, h = el.clientHeight;
+    const [r, b] = this.app.viewInset || [0, 0];
+    const fv = Math.max(0.3, (h - b) / h);
+    // and keep at least a 1:2 (width:height) visible area for the full figure
+    const fh = Math.min(1, (w - r) / Math.max(1, (h - b) * 0.5));
+    return 1 / (fv * fh);
+  }
+
+  /** Re-frame after the body changed a lot (presets, random); keeps the chosen framing. */
+  _refit(instant = false) {
+    let n = 0;
+    const go = () => { if (++n < 3) requestAnimationFrame(go); else this.cameraTo(this.camMode || 'full', instant); };
+    requestAnimationFrame(go);
   }
 
   async screenshot() {

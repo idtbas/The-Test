@@ -27,7 +27,7 @@ export class App {
     this.renderer = new Renderer(canvas, this.skinU);
     this.gl = this.renderer.gl;
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(28, 1, 0.03, 40);
+    this.camera = new THREE.PerspectiveCamera(28, 1, 0.03, 60);
     this.camera.position.set(0, 1.05, 4.6);
     this.controls = new OrbitControls(this.camera, canvas);
     this.controls.target.set(0, 0.92, 0);
@@ -36,7 +36,7 @@ export class App {
     this.controls.rotateSpeed = 0.7;
     this.controls.zoomSpeed = 0.9;
     this.controls.minDistance = 0.18;
-    this.controls.maxDistance = 9;
+    this.controls.maxDistance = 16;   // tall figures in portrait (bottom sheet) need room
     this.controls.maxPolarAngle = Math.PI * 0.62;
     this.controls.screenSpacePanning = true;
     this.controls.zoomToCursor = true;

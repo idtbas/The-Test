@@ -92,8 +92,9 @@ export class HairSystem {
       u.uGray.value = gray; u.uWidth.value = w; u.uSpec.value = spec; u.uSpec2.value = spec * 0.7;
       u.uAO.value = 0.6; u.uTaper.value = 0.9;
     };
-    set('brow', p.browEu, p.browPheo, p.gray * 0.5, 0.00019, 0.35);
-    set('lash', p.lashEu, p.lashPheo, 0, 0.0002, 0.5);
+    // brows lie flat on the skin: a strong white highlight on them reads as grey
+    set('brow', p.browEu, p.browPheo, p.gray * 0.5, 0.00021, 0.12);
+    set('lash', p.lashEu, p.lashPheo, 0, 0.0002, 0.3);
     set('beard', p.beardEu, p.beardPheo, p.beardGray, 0.00016, 0.5);
     set('body', p.bodyEu, p.bodyPheo, p.gray * 0.5, 0.00008, 0.3);
     this.sets.lash.mat.uniforms.uAO.value = 0.9;
@@ -105,7 +106,7 @@ export class HairSystem {
       stubbleColor: '#' + hairColor(p.beardEu, p.beardPheo).getHexString(),
       scalpShade: p.style === 'bald' ? 0 : Math.min(1, 0.4 + p.density * 0.4),
       hairColor: '#' + hairColor(p.eumelanin, p.pheomelanin).getHexString(),
-      browShade: Math.min(1, p.brows.density * 0.7),
+      browShade: Math.min(1, p.brows.density * 0.9),
       browColor: '#' + hairColor(p.browEu, p.browPheo).getHexString(),
     };
     const key = JSON.stringify(bp);

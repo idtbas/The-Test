@@ -183,7 +183,7 @@ void main() {
   col = mix(col, col * (uHairColor * 1.2 + 0.25), scalp * (0.25 + 0.45 * follicle));
   // brows: fine vellus hair and pigmented follicles under the terminal hairs
   float browR = vRegion.z * uBrowShade;
-  col = mix(col, col * (uBrowColor * 1.4 + 0.3), browR * (0.3 + 0.35 * follicle));
+  col = mix(col, col * (uBrowColor * 1.4 + 0.25), browR * (0.4 + 0.4 * follicle));
 
   // ---------------------------------------------------------------- makeup
   float blush = gauss3(pm, vec3(0.045, 0.700, 0.112), vec3(0.020, 0.014, 0.03)) * face;

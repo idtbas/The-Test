@@ -22,10 +22,11 @@ läuft aber auch auf jedem Desktop-Browser mit WebGL 2.
 | **Haare** | Echte Einzelsträhnen (bis 80.000): 16 Frisuren, Länge, Dichte, Dicke, Volumen, Schwerkraft, Scheitel, Locken, Wellen, Frizz, Strähnigkeit; Haaransatz, Geheimratsecken, Tonsur, Koteletten, Undercut; Haarfarbe über Eu-/Phäomelanin, Grau, Strähnchen, Ombré, Färbung |
 | **Bart & Brauen** | 10 Bartstile mit Länge/Dichte/Farbe, Augenbrauen (Form, Bogen, Dicke, Monobraue …), Wimpern, Körperbehaarung (bis Fell) |
 | **Kleidung** | Unterwäsche, Sport-BH, Tanktop, T-Shirt, Langarm, Shorts, Leggings – passt sich jeder Körperform an |
-| **Pose & Licht** | 6 Posen, 8 Licht-Setups (Fotostudio, Rembrandt, Tageslicht, Goldene Stunde, Gegenlicht, Neon …), Lichtrichtung, Brennweite, Farbwiedergabe (AgX/Neutral/ACES), Bildlook |
+| **Pose & Licht** | 7 Posen, 8 Licht-Setups (Fotostudio, Rembrandt, Tageslicht, Goldene Stunde, Gegenlicht, Neon …), Lichtrichtung, Brennweite, Farbwiedergabe (AgX/Neutral/ACES), Bildlook |
 
 **Über die Grenzen:** Der ∞-Schalter erweitert alle Regler weit über realistische Werte –
-für Elfen, Orks, Aliens, Zwerge, Riesen und alles dazwischen. Vorlagen dafür sind enthalten.
+für Elfen, Orks, Aliens, Zwerge, Riesen, Kobolde, Vampire und alles dazwischen. 15 Vorlagen
+sind enthalten.
 
 Weitere Funktionen: Rückgängig/Wiederholen, Zufallsgenerator (realistisch/extrem), Suche
 über alle Regler, Speichern im Browser mit Vorschaubild, Export/Import als Datei,
