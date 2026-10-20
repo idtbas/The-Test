@@ -32,7 +32,7 @@ const AGES = ['baby', 'child', 'young', 'old'];
 const TRI = ['min', 'average', 'max'];
 
 export function ageInYears(a) {
-  if (a < 0.1875) return 1 + a / 0.1875 * 10;
+  if (a < 0.1875) return Math.max(0, 1 + a / 0.1875 * 10);    // extreme mode goes below 0
   if (a < 0.5) return 11 + (a - 0.1875) / 0.3125 * 14;
   return 25 + (a - 0.5) / 0.5 * 65;
 }

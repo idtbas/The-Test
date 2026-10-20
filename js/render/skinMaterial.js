@@ -155,6 +155,8 @@ export function createSkinMaterial(uniforms, pass) {
         }`)
       .replace('#include <lights_physical_fragment>', `#include <lights_physical_fragment>
         material.specularColor *= uSpecular * (0.55 + 0.9 * skinM.b) * (1.0 + uWet);
+        // direct-light GGX reads the blended F0, which the chunk computed before the change above
+        material.specularColorBlended = mix( material.specularColor, diffuseColor.rgb, metalnessFactor );
         #ifdef USE_CLEARCOAT
           material.clearcoat *= (0.4 + 1.2 * skinM.b) + uWet * 3.0;
           material.clearcoatRoughness = mix(material.clearcoatRoughness, 0.08, uWet);

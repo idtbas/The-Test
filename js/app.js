@@ -264,8 +264,11 @@ export class App {
     this._updateEyes();
     const hard = moved || this.dirty || (changed && !animOnly) || this.alwaysRender;
     const soft = animOnly || this.softDirty;
-    if (hard) this.accum = 0;
-    else if (soft) this.accum = Math.min(this.accum, 3);
+    // soft resets keep some history so blinks and saccades do not flicker; once the motion has
+    // settled, restart from scratch so the converged still holds no trace of the old frames
+    if (hard) { this.accum = 0; this._softPending = false; }
+    else if (soft) { this.accum = Math.min(this.accum, 3); this._softPending = true; }
+    else if (this._softPending) { this.accum = 0; this._softPending = false; }
     if (hard || soft || this.accum < this.maxAccum) {
       this.focusShadows();
       this.hair.setFrame(this.accum);

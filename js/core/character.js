@@ -2,14 +2,15 @@
 // Produces render-ready vertex data in meters with the feet on y = 0.
 
 import { Human } from './human.js';
-import { Skeleton } from './skeleton.js';
+import { Skeleton, mat3Mul, mat3T } from './skeleton.js';
 import { SubdivMesh } from './subdivide.js';
 import { POSES } from './poses.js';
 
 export const DM = 0.1; // data is in decimeters
 
-// Bone shape controls. Each scales a set of bones; `tree` also scales all descendants so
-// that e.g. the whole skull grows uniformly including the facial bones.
+// Bone shape controls. Each scales a set of bones along their own axes; `tree` scales the
+// whole subtree about the root joint along the root's axes, so that e.g. the whole skull
+// grows including the facial bones.
 export const BONE_SHAPES = [
   { id: 'skull', label: 'Schädelgröße', bones: ['head'], tree: true, axes: 'xyz' },
   { id: 'skullW', label: 'Schädelbreite', bones: ['head'], tree: true, axes: 'x' },
@@ -257,7 +258,7 @@ export class Character {
 
   _applyBoneShapes() {
     const S = this.skeleton;
-    S.scale.fill(1);
+    for (const m of S.shape) m.set([1, 0, 0, 0, 1, 0, 0, 0, 1]);
     const desc = (i, out) => {
       out.push(i);
       for (let c = 0; c < S.n; c++) if (S.bones[c].parent === i) desc(c, out);
@@ -266,12 +267,17 @@ export class Character {
     for (const def of BONE_SHAPES) {
       const v = this.boneShape[def.id];
       if (v === undefined || Math.abs(v - 1) < 1e-4) continue;
-      let ids = def.bones.map((b) => S.byName.get(b)).filter((i) => i !== undefined);
-      if (def.tree) ids = ids.flatMap((i) => desc(i, []));
-      for (const i of ids) {
-        if (def.axes.includes('x')) S.scale[i * 3] *= v;
-        if (def.axes.includes('y')) S.scale[i * 3 + 1] *= v;
-        if (def.axes.includes('z')) S.scale[i * 3 + 2] *= v;
+      const [x, y, z] = ['x', 'y', 'z'].map((a) => (def.axes.includes(a) ? v : 1));
+      const diag = Float64Array.of(x, 0, 0, 0, y, 0, 0, 0, z);
+      for (const r of def.bones.map((b) => S.byName.get(b)).filter((i) => i !== undefined)) {
+        if (!def.tree) { mat3Mul(S.shape[r], diag, S.shape[r]); continue; }
+        // the face bones are rotated against the head: give each descendant the root's
+        // scale expressed in its own rest frame (R_c^T M R_c)
+        const R = S.restRot[r], M = mat3Mul(mat3Mul(R, diag), mat3T(R));
+        for (const c of desc(r, [])) {
+          const Rc = S.restRot[c];
+          mat3Mul(S.shape[c], mat3Mul(mat3T(Rc), mat3Mul(M, Rc)), S.shape[c]);
+        }
       }
     }
   }

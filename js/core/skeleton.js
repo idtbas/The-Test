@@ -1,5 +1,5 @@
 // Skeleton derived from the morphed mesh (joint helper cubes), posing with per-bone
-// rotation + non-inheriting scale ("bone shape"), and CPU linear blend skinning.
+// rotation + non-inheriting 3x3 shape matrix ("bone shape"), and CPU linear blend skinning.
 //
 // Bone frame convention: Y = head->tail, X = normal of the bone's rotation plane
 // (the hinge axis for elbows/knees/fingers), Z = X x Y.
@@ -72,7 +72,7 @@ export class Skeleton {
     this.poseHead = new Float64Array(n * 3);
     this.poseRot = Array.from({ length: n }, () => new Float64Array(9));
     this.local = Array.from({ length: n }, () => Float64Array.of(1, 0, 0, 0, 1, 0, 0, 0, 1));
-    this.scale = new Float64Array(n * 3).fill(1);
+    this.shape = Array.from({ length: n }, () => Float64Array.of(1, 0, 0, 0, 1, 0, 0, 0, 1)); // in the bone's rest frame
     this.skin = new Float64Array(n * 12); // 3x4 per bone, column-major
   }
 
@@ -134,7 +134,7 @@ export class Skeleton {
   setScale(name, sx, sy, sz) {
     const i = this.byName.get(name);
     if (i === undefined) return;
-    this.scale[i * 3] = sx; this.scale[i * 3 + 1] = sy; this.scale[i * 3 + 2] = sz;
+    this.shape[i].set([sx, 0, 0, 0, sy, 0, 0, 0, sz]);
   }
 
   computePose(rootOffset = [0, 0, 0]) {
@@ -150,20 +150,16 @@ export class Skeleton {
         mat3Mul(RtP, R, q);                        // rest rotation relative to parent
         mat3Mul(this.poseRot[p], q, q);
         mat3Mul(q, this.local[i], this.poseRot[i]);
-        const off = mat3Vec(RtP, [
+        const off = mat3Vec(this.shape[p], mat3Vec(RtP, [
           this.restHead[i * 3] - this.restHead[p * 3],
           this.restHead[i * 3 + 1] - this.restHead[p * 3 + 1],
           this.restHead[i * 3 + 2] - this.restHead[p * 3 + 2],
-        ]);
-        off[0] *= this.scale[p * 3]; off[1] *= this.scale[p * 3 + 1]; off[2] *= this.scale[p * 3 + 2];
+        ]));
         const w = mat3Vec(this.poseRot[p], off);
         for (let k = 0; k < 3; k++) this.poseHead[i * 3 + k] = this.poseHead[p * 3 + k] + w[k];
       }
-      // skin matrix A = poseRot * S * restRot^T ; t = poseHead - A * restHead
-      const PR = this.poseRot[i];
-      const sx = this.scale[i * 3], sy = this.scale[i * 3 + 1], sz = this.scale[i * 3 + 2];
-      RS.set([PR[0] * sx, PR[1] * sx, PR[2] * sx, PR[3] * sy, PR[4] * sy, PR[5] * sy, PR[6] * sz, PR[7] * sz, PR[8] * sz]);
-      const A = mat3Mul(RS, mat3T(R));
+      // skin matrix A = poseRot * Shape * restRot^T ; t = poseHead - A * restHead
+      const A = mat3Mul(mat3Mul(this.poseRot[i], this.shape[i], RS), mat3T(R));
       const h = [this.restHead[i * 3], this.restHead[i * 3 + 1], this.restHead[i * 3 + 2]];
       const Ah = mat3Vec(A, h);
       const o = i * 12;

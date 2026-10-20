@@ -10,8 +10,8 @@ function side(S, s, fn) {
   fn((name) => `${name}.${s}`, m);
 }
 
-function curlFingers(S, b, amount, spread = 0) {
-  // amount in degrees per joint (thumb uses 60%)
+function curlFingers(S, b, amount, spread = 0, m = 1) {
+  // amount in degrees per joint (thumb uses 60%); m = side sign (mirrors the spread)
   for (const f of FINGERS) {
     const k = f === 1 ? 0.6 : 1;
     const fall = 1 + (f - 2) * 0.12; // little finger curls a bit more
@@ -19,7 +19,7 @@ function curlFingers(S, b, amount, spread = 0) {
       // negative rotation about the hinge axis flexes towards the palm
       S.rotateLocal(b(`finger${f}-${j}`), [1, 0, 0], -amount * k * fall * D * (j === 1 ? 0.8 : 1.1));
     }
-    if (spread && f > 1) S.rotateLocal(b(`finger${f}-1`), [0, 0, 1], spread * (f - 3) * D);
+    if (spread && f > 1) S.rotateLocal(b(`finger${f}-1`), [0, 0, 1], m * spread * (f - 3) * D);
   }
 }
 
@@ -132,7 +132,7 @@ export const POSES = {
       side(S, 'L', (b, m) => { armPose(S, b, m, { down: 33, fwd: 5, twist: 0, elbow: 30, fore: 0 }); curlFingers(S, b, 16); });
       side(S, 'R', (b, m) => {
         armPose(S, b, m, { down: -30, fwd: 10, twist: -30, elbow: -95, fore: 20 });
-        curlFingers(S, b, 4, 6);
+        curlFingers(S, b, 4, 6, m);
       });
       S.rotateWorld('head', [0, 0, 1], 3 * D);
       legs(S, {});

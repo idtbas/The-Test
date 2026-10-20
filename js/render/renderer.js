@@ -318,6 +318,16 @@ export class Renderer {
     gl.shadowMap.type = THREE.PCFShadowMap;
     gl.shadowMap.autoUpdate = false;
     gl.autoClear = false;
+    // Shadow maps are drawn inside the frame's first lit render, which can be a layer-restricted
+    // prepass; test casters against the camera's full mask so hair and clothing always cast.
+    const sm = gl.shadowMap, smRender = sm.render;
+    sm.render = (lights, scene, camera) => {
+      const mask = camera.layers.mask;
+      if (camera === this._shadowCam) camera.layers.mask = this._shadowMask;
+      smRender.call(sm, lights, scene, camera);
+      camera.layers.mask = mask;
+    };
+    this._shadowCam = null;
     this.gl = gl;
     this.skinUniforms = skinUniforms;
     this.settings = {
@@ -438,6 +448,7 @@ export class Renderer {
     const prevMask = camera.layers.mask;
     const prevBg = scene.background;
     gl.shadowMap.needsUpdate = updateShadows || accum === 0;
+    this._shadowCam = camera; this._shadowMask = prevMask;
 
     // ---- normal/depth prepass for AO
     const U = this.skinUniforms;
@@ -502,6 +513,7 @@ export class Renderer {
     gl.setClearColor(0x000000, 1);
     gl.clear(true, true, false);
     gl.render(scene, camera);
+    this._shadowCam = null;
     if (accum > 0) {
       camera.projectionMatrix.copy(proj);
       camera.projectionMatrixInverse.copy(proj).invert();

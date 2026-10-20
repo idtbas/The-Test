@@ -244,6 +244,7 @@ export class Stage {
     if (this.envRT) this.envRT.dispose();
     const envScene = buildEnvScene(p.env);
     this.envRT = this.pmrem.fromScene(envScene, 0.02);
+    envScene.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
     this.scene.environment = this.envRT.texture;
     this.envRotation(this.rotation);
     this.backdropMat.color.set(p.bg);
