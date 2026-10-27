@@ -222,14 +222,15 @@ async function main() {
       switch (ev.type) {
         case 'relay': audio.relay(ev.n || 1); break;
         case 'starter': audio.starter(true); audio.relay(2); break;
-        case 'ignite': audio.ignition(); break;
+        case 'ignite': audio.ignition(ev.which); break;
+        case 'clunk': case 'lock': case 'dump': audio.event(ev.type); break;
         case 'caution': audio.chime(); break;
         case 'chime': audio.beep(1600, 0.25); break;
         case 'bootDone': audio.beep(2200, 0.08); setTimeout(() => audio.beep(2200, 0.08), 140); break;
         case 'reject': audio.tone([[400, 0.12], [300, 0.18]], 0.05); break;
         case 'footfall':
           M.joltV -= 0.9 * ev.strength;
-          setTimeout(() => audio.thump(ev.strength), 30);
+          audio.thump(ev.strength, ev.foot);
           G.shadowDirty = G.time + 0.1;
           break;
       }
@@ -258,8 +259,25 @@ async function main() {
       const v = new THREE.Vector3(); c.group.getWorldPosition(v); v.project(camera);
       return { x: (v.x + 1) / 2 * window.innerWidth, y: (1 - v.y) / 2 * window.innerHeight };
     },
+    audio,
+    noRender: false,
+    // records the master output (debug / sound previews), returns base64 webm
+    record: async (sec) => {
+      const dest = audio.ctx.createMediaStreamDestination();
+      audio.master.connect(dest);
+      const rec = new MediaRecorder(dest.stream, { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 256000 });
+      const chunks = [];
+      rec.ondataavailable = (e) => chunks.push(e.data);
+      rec.start(1000);
+      await new Promise((r) => setTimeout(r, sec * 1000));
+      await new Promise((r) => { rec.onstop = r; rec.stop(); });
+      const buf = new Uint8Array(await new Blob(chunks).arrayBuffer());
+      let bin = ''; for (let i = 0; i < buf.length; i += 32768) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 32768));
+      return btoa(bin);
+    },
     press: (id, opts = {}) => {
       const c = cockpit.controls.find((x) => x.id === id); if (!c) return false;
+      audio.at(c.group.getWorldPosition(new THREE.Vector3()));
       c.interact({ type: 'down', button: opts.button || 0, local: new THREE.Vector3(opts.x || 0, opts.y ?? 0.01, 0.02), object: c.picks[0] });
       c.interact({ type: 'up', button: opts.button || 0 });
       return true;
@@ -279,11 +297,13 @@ async function main() {
     sim.update(dt);
     handleEvents();
     motion(dt);
-    audio.update(sim, dt, sim.act.motion);
     input.update(dt, shake);
+    audio.setListener(camera);
+    audio.update(sim, dt, sim.act.motion);
     cockpit.update(dt, world);
     world.update(dt, pose, sim);
     const enabled = cockpit.screens.map((sc) => sc.mat.uniforms.power.value > 0.01 && sc.boot > 0.6);
+    if (window.__gw7.noRender) return;
     if (enabled.some(Boolean)) world.renderFeeds(renderer, pose, enabled);
     // cockpit shadow maps only refresh while something moves
     const dirty = (G.shadowDirty || 0) > G.time || sim.walk.speedAbs > 0.05 || sim.act.motion > 0.05 || !G.shadowInit;

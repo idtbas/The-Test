@@ -71,7 +71,7 @@ class OSB extends Control {
     this.group.add(this.addPick(pick));
   }
   interact(ev) {
-    if (ev.type === 'down') { this.pressed = true; G.audio?.click('push'); this.mfd.osb(this.i); }
+    if (ev.type === 'down') { this.pressed = true; G.audio?.click('osb'); this.mfd.osb(this.i); }
     if (ev.type === 'up') { this.pressed = false; }
   }
   update(dt) { this.depth = approach(this.depth, this.pressed ? 1 : 0, 40, dt); this.cap.position.z = 0.003 - this.depth * 0.0015; }

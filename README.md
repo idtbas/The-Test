@@ -6,6 +6,14 @@ läuft aber auch auf jedem Desktop-Browser mit WebGL 2.
 
 **Live:** https://idtbas.github.io/The-Test/
 
+## GW-7 Grauwolf (Mech-Cockpit-Simulator)
+
+Ein zweites Projekt im selben Repository: ein realistischer First-Person-Cockpitsimulator eines
+zweibeinigen Mechs mit Kaltstart-Prozedur, funktionierenden Schaltern, Systemsimulation und
+räumlichem Sound-Design. Optimiert für iPad Pro mit Tastatur und Maus.
+
+**Live:** https://idtbas.github.io/The-Test/mech/ · Details in [`mech/KONZEPT.md`](mech/KONZEPT.md)
+
 ## Was man einstellen kann
 
 | Bereich | Möglichkeiten |

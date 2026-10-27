@@ -63,3 +63,24 @@
 | A / D | Drehen |
 | X | Fahrhebel auf STOP |
 | H | Hilfe |
+
+## Sound-Design
+
+Alles wird beim Start synthetisiert, es werden keine Audiodateien geladen.
+
+- **Einzelgeräusche** per Modalsynthese (abklingende Resonanzen, gefiltertes Rauschen,
+  Tonhöhengleiten), mehrere Varianten je Geräusch: Kippschalter mit Schnapp- und Kontaktklick,
+  Schutzkappen, Korry-Taster, Rastungen, Sicherungen, Schütze mit Spulenbrummen,
+  Zündkerzenticken, Flammenzündung, Schritte (Tiefbass, Strukturnachklang, Dämpferzischen,
+  Klappern), Bodenkontakt, Strukturächzen, Verriegelungen, Hydraulik-Ablass
+- **Maschinen** mit eigenen Obertonspektren und langsamer Zufallsmodulation: Lüfter,
+  400-Hz-Wechselrichter, Kraftstoffpumpen, APU (Anlassermotor, Verdichterpfeifen, Brennkammer,
+  Ansaugung), Hauptturbine (Rotortöne, Brennkammer, Luftanlasser, Vibration),
+  Hydraulikpumpen (Kolbenwelligkeit), Servoventile im Schrittrhythmus, Kreisel, Kühlpumpen,
+  Wind
+- **Räumlich (HRTF):** Jede Quelle sitzt an ihrem Ort im Cockpit, der Hörer folgt der
+  Kopfdrehung. Äußere Aggregate kommen gedämpft über einen Rumpf-Filter herein, dazu kommt ein
+  berechneter Nachhall der Stahlkapsel
+- **Warnungen** über einen kleinen, bandbegrenzten Cockpit-Lautsprecher, dazu eine Sprachausgabe
+  bei roten Warnungen
+- Lautstärke mit `+` / `−`, Warntonlautstärke am Drehknopf WARNTON; Kopfhörer empfohlen

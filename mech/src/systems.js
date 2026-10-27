@@ -377,7 +377,9 @@ export class Sim {
     if (a.calibrating) {
       if (!hydOK) { a.calibrating = false; a.cal = 0; this.message('KALIBRIERUNG ABGEBROCHEN: HYD DRUCK'); }
       else {
+        const j0 = Math.floor(a.cal * 6);
         a.cal = Math.min(1, a.cal + dt / 18);
+        if (Math.floor(a.cal * 6) !== j0) this.emit('clunk');
         motion = 0.5 + 0.5 * Math.abs(Math.sin(a.cal * 40));
         if (a.cal >= 1) { a.calibrating = false; a.calibrated = true; this.message('KALIBRIERUNG ABGESCHLOSSEN'); this.emit('chime'); }
       }
@@ -387,6 +389,7 @@ export class Sim {
     if (canMove && Math.abs(a.target - a.posture) > 0.001) {
       a.posture = step(a.posture, a.target, dt / 8.5);
       motion = Math.max(motion, 1);
+      if (Math.abs(a.target - a.posture) <= 0.001) this.emit('clunk');
     } else if (!hydOK && a.posture > 0) {
       // loss of hydraulics: mech sags down slowly
       const sag = (150 - Math.min(this.hyd.a, this.hyd.b)) / 150;
@@ -399,6 +402,10 @@ export class Sim {
 
   walking(dt) {
     const w = this.walk, a = this.act, sw = this.sw;
+    if (this._fl !== undefined && this._fl !== sw.footLock) this.emit('lock');
+    this._fl = sw.footLock;
+    if (this._es !== undefined && this._es !== sw.estop && sw.estop) this.emit('dump');
+    this._es = sw.estop;
     const gait = GAITS[sw.gait] || GAITS[1];
     w.canWalk = a.posture > 0.995 && sw.footLock === 1 && this.P.act && this.hydOK() && this.gyro.ok && this.mtg.lit && !sw.estop;
     const thr = sw.throttle;

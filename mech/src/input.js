@@ -76,6 +76,7 @@ export class Input {
     if (hit && hit.control) {
       const ctl = hit.control;
       const local = ctl.group.worldToLocal(hit.point.clone());
+      G.audio?.at(hit.point);
       this.active = { ctl, button: e.button };
       ctl.interact({ type: 'down', button: e.button, local, object: hit.object });
       G.shadowDirty = G.time + 0.6;
@@ -129,7 +130,7 @@ export class Input {
     if (Math.abs(this.wheelAcc) < 40) return;
     const dir = this.wheelAcc < 0 ? 1 : -1;
     this.wheelAcc = 0;
-    if (hit) { hit.interact({ type: 'wheel', dir }); G.shadowDirty = G.time + 0.6; }
+    if (hit) { G.audio?.at(hit.group.getWorldPosition(new THREE.Vector3())); hit.interact({ type: 'wheel', dir }); G.shadowDirty = G.time + 0.6; }
     else this.zoomWheel = clamp(this.zoomWheel + dir * 0.18, 0, 1);
   }
 
@@ -149,6 +150,9 @@ export class Input {
     if (k === 'q') this.ui.cycleQuality();
     if (k === 'c') { this.tYaw = 0; this.tPitch = -6; this.zoomWheel = 0; }
     if (k === 'm') { G.sim.masterCautionReset(); G.sim.masterWarningReset(); }
+    if (k === '+' || k === '=' || k === '-') {
+      const a = G.audio; if (a) { a.setVolume(a.volume + (k === '-' ? -0.1 : 0.1)); this.ui.toast(`Lautstärke ${Math.round(a.volume * 100)} %`); }
+    }
     if (k === 'a' || k === 'd') G.sim.sw.turn = (this.keys.has('d') ? 1 : 0) - (this.keys.has('a') ? 1 : 0);
   }
 

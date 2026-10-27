@@ -255,7 +255,7 @@ export class Cockpit {
       onPress: () => { s.warn.lampTest = true; if (s.P.ess) s.flags.lampTested = true; },
       onRelease: () => { s.warn.lampTest = false; },
     }), -0.38, -0.165);
-    p.add(new Knob({ key: 'warnVol', name: 'Warnton-Lautstärke', label: 'WARNTON', ends: ['LEISE', 'LAUT'], onChange: (v) => { if (G.audio) G.audio.master && (G.audio.master.gain.value = 0.25 + v * 0.8); } }), -0.25, -0.17);
+    p.add(new Knob({ key: 'warnVol', name: 'Warnton-Lautstärke', label: 'WARNTON', ends: ['LEISE', 'LAUT'] }), -0.25, -0.17);
 
     // annunciator
     this.ann = new Annunciator(5, 4, 0.058, 0.0225);
