@@ -157,13 +157,13 @@ export class Cockpit {
       strip.add(new Knob({ key: 'sduBrt' + i, name: `${d.name} Helligkeit`, r: 0.0065, ends: ['', ''] }), 0.085, -0.002);
       strip.text('BRT', 0.06, 0, { size: 0.0032 });
       strip.build();
-      strip.group.position.set(0, -h / 2 - 0.022, 0.006);
+      strip.group.position.set(0, h / 2 + 0.021, 0.006);
       strip.group.scale.setScalar(1);
       g.add(strip.group);
       this.panels.push(strip);
       // power LED
       const led = new THREE.Mesh(new THREE.SphereGeometry(0.0028, 10, 6), new THREE.MeshStandardMaterial({ color: 0x111, emissive: 0x33ff66, emissiveIntensity: 0 }));
-      led.position.set(-d.w / 2 + 0.01, -h / 2 - 0.022, 0.012); g.add(led);
+      led.position.set(-d.w / 2 + 0.01, h / 2 + 0.021, 0.012); g.add(led);
 
       g.updateMatrixWorld(true);
       const pa = V3(-d.w / 2, -h / 2, 0).applyMatrix4(scr.matrixWorld);
@@ -217,45 +217,45 @@ export class Cockpit {
 
     // gauges
     const gN2 = dialFace({ min: 0, max: 110, a0: -135, a1: 135, major: 10, minor: 5, labels: [0, 20, 40, 60, 80, 100], title: 'MTG N2', unit: '%', arcs: [{ from: 104, to: 110, color: '#d22' }] });
-    p.add(new Gauge({ id: 'gN2', name: 'MTG Drehzahl N2', r: 0.034, face: gN2, needles: [{ value: () => s.mtg.n2 * 100, min: 0, max: 110, a0: -135, a1: 135 }], read: () => `${(s.mtg.n2 * 100).toFixed(1)} %` }), -0.505, 0.125);
+    p.add(new Gauge({ id: 'gN2', name: 'MTG Drehzahl N2', r: 0.03, face: gN2, needles: [{ value: () => s.mtg.n2 * 100, min: 0, max: 110, a0: -135, a1: 135 }], read: () => `${(s.mtg.n2 * 100).toFixed(1)} %` }), -0.505, 0.15);
     const gEGT = dialFace({ min: 0, max: 1100, a0: -135, a1: 135, major: 100, minor: 50, labels: [0, 200, 400, 600, 800, 1000], fmt: (v) => v / 100, title: 'MTG AGT', unit: '°C ×100', arcs: [{ from: 760, to: 860, color: '#e8a400' }, { from: 860, to: 1100, color: '#d22' }] });
-    p.add(new Gauge({ id: 'gEGT', name: 'MTG Abgastemperatur', r: 0.034, face: gEGT, needles: [{ value: () => s.mtg.egt, min: 0, max: 1100, a0: -135, a1: 135 }], read: () => `${s.mtg.egt.toFixed(0)} °C` }), -0.505, 0.02);
+    p.add(new Gauge({ id: 'gEGT', name: 'MTG Abgastemperatur', r: 0.03, face: gEGT, needles: [{ value: () => s.mtg.egt, min: 0, max: 1100, a0: -135, a1: 135 }], read: () => `${s.mtg.egt.toFixed(0)} °C` }), -0.505, 0.075);
     const gHyd = dialFace({ min: 0, max: 300, a0: -135, a1: 135, major: 50, minor: 25, labels: [0, 100, 200, 300], title: 'HYD A  B', unit: 'BAR', arcs: [{ from: 0, to: 150, color: '#e8a400' }, { from: 190, to: 225, color: '#2c2' }] });
     p.add(new Gauge({
-      id: 'gHyd', name: 'Hydraulikdruck A/B', r: 0.034, face: gHyd,
+      id: 'gHyd', name: 'Hydraulikdruck A/B', r: 0.03, face: gHyd,
       needles: [{ value: () => s.hyd.a, min: 0, max: 300, a0: -135, a1: 135, color: 0xf2f0e8 }, { value: () => s.hyd.b, min: 0, max: 300, a0: -135, a1: 135, color: 0xffb020, len: 0.66 }],
       read: () => `A ${s.hyd.a.toFixed(0)} bar · B ${s.hyd.b.toFixed(0)} bar`,
-    }), -0.505, -0.085);
+    }), -0.505, 0.0);
     const gG = dialFace({ min: -1, max: 3, a0: -135, a1: 135, major: 1, minor: 0.25, labels: [-1, 0, 1, 2, 3], title: 'BESCHL', unit: 'G' });
     this.gLoad = 1;
-    p.add(new Gauge({ id: 'gG', name: 'Vertikalbeschleunigung', r: 0.034, face: gG, needles: [{ value: () => this.gLoad, min: -1, max: 3, a0: -135, a1: 135, damp: 18 }], read: () => `${this.gLoad.toFixed(2)} g` }), -0.505, -0.19);
+    p.add(new Gauge({ id: 'gG', name: 'Vertikalbeschleunigung', r: 0.026, face: gG, needles: [{ value: () => this.gLoad, min: -1, max: 3, a0: -135, a1: 135, damp: 18 }], read: () => `${this.gLoad.toFixed(2)} g` }), 0.2, -0.165);
 
     // attitude indicator
-    p.add(this.makeAttitude(), 0.505, 0.125);
+    p.add(this.makeAttitude(), 0.505, 0.15);
     // clock
     const cf = dialFace({ min: 0, max: 60, a0: 0, a1: 360, major: 5, minor: 1, labels: [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60], fmt: (v) => String(v / 5), title: 'UHR', titleY: -0.35, unit: '' });
     const now = () => { const d = new Date(); return d.getHours() % 12 + d.getMinutes() / 60; };
     p.add(new Gauge({
-      id: 'clock', name: 'Borduhr', r: 0.034, face: cf,
+      id: 'clock', name: 'Borduhr', r: 0.03, face: cf,
       needles: [
         { value: () => now() * 5, min: 0, max: 60, a0: 0, a1: 360, len: 0.5, width: 0.06, damp: 50 },
         { value: () => { const d = new Date(); return d.getMinutes() + d.getSeconds() / 60; }, min: 0, max: 60, a0: 0, a1: 360, len: 0.8, width: 0.045, damp: 50 },
         { value: () => { const d = new Date(); return d.getSeconds() + d.getMilliseconds() / 1000; }, min: 0, max: 60, a0: 0, a1: 360, len: 0.88, width: 0.02, color: 0xff6020, damp: 60 },
       ],
       read: () => new Date().toLocaleTimeString('de-DE'),
-    }), 0.505, 0.02);
+    }), 0.505, 0.075);
     const gT = dialFace({ min: 0, max: 140, a0: -120, a1: 120, major: 20, minor: 10, labels: [0, 40, 80, 120], title: 'KÜHLM', unit: '°C', arcs: [{ from: 95, to: 115, color: '#e8a400' }, { from: 115, to: 140, color: '#d22' }] });
-    p.add(new Gauge({ id: 'gCool', name: 'Kühlmitteltemperatur', r: 0.034, face: gT, needles: [{ value: () => s.cool.temp, min: 0, max: 140, a0: -120, a1: 120 }], read: () => `${s.cool.temp.toFixed(0)} °C` }), 0.505, -0.085);
+    p.add(new Gauge({ id: 'gCool', name: 'Kühlmitteltemperatur', r: 0.03, face: gT, needles: [{ value: () => s.cool.temp, min: 0, max: 140, a0: -120, a1: 120 }], read: () => `${s.cool.temp.toFixed(0)} °C` }), 0.505, 0.0);
     const gS = dialFace({ min: 0, max: 40, a0: -135, a1: 135, major: 5, minor: 1, labels: [0, 10, 20, 30, 40], title: 'GESCHW', unit: 'KM/H' });
-    p.add(new Gauge({ id: 'gSpd', name: 'Geschwindigkeit über Grund', r: 0.034, face: gS, needles: [{ value: () => Math.abs(s.walk.speed) * 3.6, min: 0, max: 40, a0: -135, a1: 135 }], read: () => `${(s.walk.speed * 3.6).toFixed(1)} km/h` }), 0.505, -0.19);
+    // ground speed is shown on the HUD and the STAT page
 
     // lamp test + warning volume
     p.add(new PushButton({
       id: 'lamptest', name: 'Lampentest', label: 'LAMPEN-\nTEST', titleSize: 0.003,
       onPress: () => { s.warn.lampTest = true; if (s.P.ess) s.flags.lampTested = true; },
       onRelease: () => { s.warn.lampTest = false; },
-    }), -0.38, -0.165);
-    p.add(new Knob({ key: 'warnVol', name: 'Warnton-Lautstärke', label: 'WARNTON', ends: ['LEISE', 'LAUT'] }), -0.25, -0.17);
+    }), -0.2, -0.15);
+    p.add(new Knob({ key: 'warnVol', name: 'Warnton-Lautstärke', label: 'WARNTON', ends: ['LEISE', 'LAUT'] }), -0.28, -0.15);
 
     // annunciator
     this.ann = new Annunciator(5, 4, 0.058, 0.0225);
@@ -273,9 +273,9 @@ export class Cockpit {
     p.text('WARNUNGEN', 0, -0.098, { size: 0.0032, weight: 700 });
 
     // emergency stop
-    p.add(this.makeEStop(), 0.33, -0.163);
-    p.text('NOT-AUS', 0.33, -0.124, { size: 0.0042, weight: 700 });
-    p.text('DREHEN ZUM\nENTRIEGELN', 0.39, -0.165, { size: 0.0026, align: 'left' });
+    p.add(this.makeEStop(), 0.285, -0.165);
+    p.text('NOT-AUS', 0.285, -0.127, { size: 0.0042, weight: 700 });
+
 
     this.addPanel(p, origin, V3(1, 0, 0), yAxis);
     // attach MFDs after build
@@ -327,7 +327,7 @@ export class Cockpit {
     tex.repeat.set(1, 0.5);
     const e = makeCanvas(8, 8); e.getContext('2d').fillStyle = '#fff'; e.getContext('2d').fillRect(0, 0, 8, 8);
     const g = new Gauge({
-      id: 'att', name: 'Lageanzeige (Kreisel)', r: 0.034,
+      id: 'att', name: 'Lageanzeige (Kreisel)', r: 0.03,
       face: { c, e: c },
       needles: [],
       read: () => (s.gyro.ok ? `Neigung ${(this.pitchDeg || 0).toFixed(1)}° · Rollen ${(this.rollDeg || 0).toFixed(1)}°` : 'KREISEL AUS – FLAGGE'),
@@ -345,13 +345,13 @@ export class Cockpit {
         }
         const om = new THREE.MeshStandardMaterial({ map: canvasTex(o), transparent: true, emissive: LEGEND_LIGHT.clone(), emissiveMap: canvasTex(o), emissiveIntensity: 0, roughness: 0.5 });
         G.gaugeMats.push(om);
-        const ov = new THREE.Mesh(new THREE.CircleGeometry(0.034, 40), om);
+        const ov = new THREE.Mesh(new THREE.CircleGeometry(0.03, 40), om);
         ov.position.z = 0.0052; gg.group.add(ov);
         // OFF flag
         const fl = makeCanvas(128, 48), fk = fl.getContext('2d');
         fk.fillStyle = '#d01c10'; fk.fillRect(0, 0, 128, 48); fk.fillStyle = '#fff'; fk.font = `700 34px ${FONT_LABEL}`; fk.textAlign = 'center'; fk.textBaseline = 'middle'; fk.fillText('AUS', 64, 26);
-        gg.flag = new THREE.Mesh(new THREE.PlaneGeometry(0.02, 0.0075), new THREE.MeshStandardMaterial({ map: canvasTex(fl), roughness: 0.6 }));
-        gg.flag.position.set(-0.016, -0.016, 0.0055); gg.flag.rotation.z = 0.5; gg.group.add(gg.flag);
+        gg.flag = new THREE.Mesh(new THREE.PlaneGeometry(0.018, 0.0068), new THREE.MeshStandardMaterial({ map: canvasTex(fl), roughness: 0.6 }));
+        gg.flag.position.set(-0.014, -0.014, 0.0055); gg.flag.rotation.z = 0.5; gg.group.add(gg.flag);
         gg.tex = tex;
         gg.cage = { pitch: 0, roll: 0 };
       },
@@ -410,7 +410,7 @@ export class Cockpit {
   buildConsoles() {
     const M = materials(), s = G.sim;
     const tilt = 9 * DEG;
-    const yc = 0.665, zFront = -0.62, zBack = 0.24;
+    const yc = 0.665, zFront = -0.52, zBack = 0.24;
     const mk = (side) => {
       const xc = side * 0.56, wTop = 0.44;
       const xIn = xc - side * wTop / 2, xOut = xc + side * wTop / 2;
@@ -442,15 +442,15 @@ export class Cockpit {
     };
     // panel stacks from the back towards the front, position = rear edge z
     // ---- LEFT
-    let z = 0.24;
+    let z = 0.25;
     const thr = this.throttlePanel();
     place(L, thr, z); z -= thr.h;
     for (const p of [this.lightPanel(), this.mtgPanel(), this.apuPanel(), this.fuelPanel()]) { place(L, p, z); z -= p.h; }
     // ---- RIGHT
-    z = 0.24;
+    z = 0.25;
     const st = this.stickPanel();
     place(R, st, z); z -= st.h;
-    for (const p of [this.motionPanel(), this.navPanel(), this.coolPanel(), this.hydPanel(), this.sensorPanel()]) { place(R, p, z); z -= p.h; }
+    for (const p of [this.motionPanel(), this.navPanel(), this.hydPanel(), this.sensorPanel()]) { place(R, p, z); z -= p.h; }
   }
 
   fuelPanel() {
@@ -514,7 +514,7 @@ export class Cockpit {
 
   throttlePanel() {
     const s = G.sim, M = materials();
-    const p = new Panel({ id: 'thr', title: '', w: 0.42, h: 0.36 });
+    const p = new Panel({ id: 'thr', title: '', w: 0.42, h: 0.26 });
     const lx = -0.07;
     // slot and scale
     p.rect(lx, 0.012, 0.016, 0.1, { fill: '#050505' });
@@ -524,11 +524,9 @@ export class Cockpit {
       p.line(lx + 0.012, y, lx + 0.024, y, { width: 0.0008 });
       p.text(l, lx + 0.028, y, { size: 0.0042, align: 'left', weight: v === 0 ? 700 : 600 });
     }
-    p.text('FAHRHEBEL', lx, -0.15, { size: 0.0048, weight: 700 });
-    p.text('VOR', lx - 0.03, 0.12, { size: 0.0034 }); p.line(lx - 0.03, 0.128, lx - 0.03, 0.142, { width: 0.0008 });
-    p.add(new Rotary({ key: 'gait', name: 'Gangart', label: 'GANGART', positions: GAITS.map((g) => g.name), step: 45 }), 0.11, 0.06);
-    p.box(0.11, -0.08, 0.15, 0.1, 'FUSS-KAMERA', { open: false });
-    p.text('NICHT\nINSTALLIERT', 0.11, -0.085, { size: 0.0036 });
+    p.text('FAHRHEBEL', lx, -0.1, { size: 0.0048, weight: 700 });
+    p.text('VOR', lx - 0.03, 0.09, { size: 0.0034 }); p.line(lx - 0.03, 0.098, lx - 0.03, 0.112, { width: 0.0008 });
+    p.add(new Rotary({ key: 'gait', name: 'Gangart', label: 'GANGART', positions: GAITS.map((g) => g.name), step: 45 }), 0.11, 0.02);
     const lever = new Control({ id: 'throttle', name: 'Fahrhebel', key: 'throttle' });
     lever.build = () => {
       lever.pivot = new THREE.Group();
@@ -586,9 +584,9 @@ export class Cockpit {
 
   stickPanel() {
     const s = G.sim, M = materials();
-    const p = new Panel({ id: 'stick', title: '', w: 0.42, h: 0.36 });
-    p.text('STEUERKNÜPPEL', -0.05, -0.15, { size: 0.0045, weight: 700 });
-    p.text('A / D  DREHEN', -0.05, -0.162, { size: 0.0034 });
+    const p = new Panel({ id: 'stick', title: '', w: 0.42, h: 0.26 });
+    p.text('STEUERKNÜPPEL', -0.05, -0.105, { size: 0.0045, weight: 700 });
+    p.text('A / D  DREHEN', -0.05, -0.117, { size: 0.0034 });
     const st = new Control({ id: 'stick', name: 'Steuerknüppel (Drehen: A/D)' });
     st.build = () => {
       // rubber boot (bellows)
@@ -623,38 +621,27 @@ export class Cockpit {
       st.pivot.rotation.y = st.ry; st.pivot.rotation.x = st.rx;
     };
     st.tip = () => ({ title: 'Steuerknüppel', state: 'Drehen mit A / D' });
-    p.add(st, -0.05, 0.02);
+    p.add(st, -0.05, 0.01);
     // hand rest pad
     return p;
   }
 
   hydPanel() {
-    const s = G.sim;
-    const p = new Panel({ id: 'hyd', title: 'HYDRAULIK', w: 0.42, h: 0.12 });
-    p.add(new Toggle({ key: 'hydA', name: 'Hydraulikpumpe A (MTG-getrieben)', label: 'PUMPE A', positions: ['AUS', 'EIN'] }), -0.15, -0.012);
-    p.add(new Toggle({ key: 'hydB', name: 'Hydraulikpumpe B (elektrisch)', label: 'PUMPE B', positions: ['AUS', 'EIN'] }), -0.075, -0.012);
-    p.add(new Korry({
-      id: 'hydStat', name: 'Hydraulik-Status', mode: 'none', size: [0.022, 0.022],
-      legends: [{ text: 'A DRUCK', color: '#ffae00', lit: () => s.hyd.a < 150 }, { text: 'B DRUCK', color: '#ffae00', lit: () => s.hyd.b < 150 }],
-      state: () => `A ${s.hyd.a.toFixed(0)} · B ${s.hyd.b.toFixed(0)} bar`,
-    }), 0.02, -0.008);
-    p.text('210 BAR', 0.12, -0.05, { size: 0.0034 });
-    p.stripes(0.12, 0.022, 0.12, 0.012);
-    p.text('ACHTUNG HOCHDRUCK', 0.12, 0.002, { size: 0.0036, weight: 700 });
-    return p;
-  }
-
-  coolPanel() {
-    const p = new Panel({ id: 'cool', title: 'KÜHLUNG', w: 0.42, h: 0.12 });
-    p.add(new Toggle({ key: 'cool1', name: 'Kühlmittelpumpe 1', label: 'PUMPE 1', positions: ['AUS', 'EIN'] }), -0.15, -0.012);
-    p.add(new Toggle({ key: 'cool2', name: 'Kühlmittelpumpe 2', label: 'PUMPE 2', positions: ['AUS', 'EIN'] }), -0.075, -0.012);
-    p.add(new Toggle({ key: 'fan', name: 'Kühlerlüfter', label: 'LÜFTER', positions: ['AUTO', 'MAX'] }), 0.0, -0.012);
+    const p = new Panel({ id: 'hyd', title: 'HYDRAULIK  ·  KÜHLUNG', w: 0.42, h: 0.125 });
+    const y = -0.016;
+    p.add(new Toggle({ key: 'hydA', name: 'Hydraulikpumpe A (MTG-getrieben)', label: 'PUMPE A', positions: ['AUS', 'EIN'] }), -0.165, y);
+    p.add(new Toggle({ key: 'hydB', name: 'Hydraulikpumpe B (elektrisch)', label: 'PUMPE B', positions: ['AUS', 'EIN'] }), -0.095, y);
+    p.box(-0.13, y + 0.002, 0.135, 0.085, 'HYD 210 BAR');
+    p.add(new Toggle({ key: 'cool1', name: 'Kühlmittelpumpe 1', label: 'PUMPE 1', positions: ['AUS', 'EIN'] }), 0.0, y);
+    p.add(new Toggle({ key: 'cool2', name: 'Kühlmittelpumpe 2', label: 'PUMPE 2', positions: ['AUS', 'EIN'] }), 0.07, y);
+    p.add(new Toggle({ key: 'fan', name: 'Kühlerlüfter', label: 'LÜFTER', positions: ['AUTO', 'MAX'] }), 0.145, y);
+    p.box(0.072, y + 0.002, 0.205, 0.085, 'KÜHLUNG');
     return p;
   }
 
   navPanel() {
     const s = G.sim;
-    const p = new Panel({ id: 'nav', title: 'NAVIGATION', w: 0.42, h: 0.13 });
+    const p = new Panel({ id: 'nav', title: 'NAVIGATION', w: 0.42, h: 0.125 });
     p.add(new Rotary({ key: 'insMode', name: 'INS-Betriebsart', label: 'INS', positions: ['AUS', 'AUSR', 'NAV', 'NOT'], step: 38, labelBelow: 0.028 }), -0.13, -0.006);
     p.add(new Toggle({ key: 'gyro', name: 'Stabilisierungskreisel', label: 'KREISEL', positions: ['AUS', 'EIN'] }), -0.02, -0.012);
     p.add(new Korry({
@@ -672,7 +659,7 @@ export class Cockpit {
 
   sensorPanel() {
     const s = G.sim;
-    const p = new Panel({ id: 'sens', title: 'SENSOREN', w: 0.42, h: 0.11 });
+    const p = new Panel({ id: 'sens', title: 'SENSOREN', w: 0.42, h: 0.105 });
     p.add(new Toggle({ key: 'sensors', name: 'Optische Sensoren / Displays', label: 'OPT SENS', positions: ['AUS', 'EIN'] }), -0.15, -0.01);
     p.add(new Korry({
       key: 'sensorMode', name: 'Bildmodus TV / IR', mode: 'latch', size: [0.024, 0.022], label: 'MODUS',
@@ -685,7 +672,7 @@ export class Cockpit {
 
   motionPanel() {
     const s = G.sim;
-    const p = new Panel({ id: 'motion', title: 'BEWEGUNGSSYSTEM', w: 0.42, h: 0.15 });
+    const p = new Panel({ id: 'motion', title: 'BEWEGUNGSSYSTEM', w: 0.42, h: 0.14 });
     p.add(new Toggle({ key: 'actPower', name: 'Aktuator-Stromversorgung', label: 'AKT STROM', positions: ['AUS', 'EIN'] }), -0.15, -0.018);
     p.add(new Korry({
       id: 'cal', name: 'Aktuatoren kalibrieren', mode: 'action', size: [0.026, 0.024], label: 'KALIBRIEREN',

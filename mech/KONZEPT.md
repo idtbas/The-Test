@@ -54,7 +54,7 @@
 | --- | --- |
 | Klick ins Bild | Maus fangen (Blick mit der Maus, Fadenkreuz) |
 | Esc | Maus freigeben (freier Zeiger, Ziehen = Blick) |
-| Linksklick | Bedienelement betätigen (Kippschalter: obere/untere Hälfte) |
+| Linksklick | Kippschalter umlegen, Taster drücken (Dreistufer: geklickte Seite) |
 | Rechtsklick | Bedienelement in Gegenrichtung |
 | Mausrad | Drehschalter/Dimmer drehen, sonst Zoom |
 | Z (halten) | Zoom |

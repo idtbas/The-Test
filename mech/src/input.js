@@ -5,7 +5,7 @@ import { G, clamp, approach, DEG } from './util.js';
 export const VIEWS = {
   1: { yaw: 0, pitch: -2, fov: 0, name: 'Sichtschirme' },
   2: { yaw: 0, pitch: -30, fov: 0, name: 'Instrumentenbrett' },
-  3: { yaw: 44, pitch: -52, fov: 0, name: 'Linke Konsole' },
+  3: { yaw: 56, pitch: -50, fov: 0, name: 'Linke Konsole' },
   4: { yaw: -44, pitch: -52, fov: 0, name: 'Rechte Konsole' },
   5: { yaw: 0, pitch: 62, fov: 0, name: 'Overhead' },
 };
@@ -65,6 +65,19 @@ export class Input {
     return { control: h.object.userData.control, object: h.object, point: h.point };
   }
 
+  // which side of a control was clicked, measured on screen along the control's own up/right axes
+  screenSides(ctl, ndc) {
+    const g = ctl.group;
+    const p0 = g.localToWorld(new THREE.Vector3(0, 0, 0.01)).project(this.camera);
+    const pu = g.localToWorld(new THREE.Vector3(0, 0.02, 0.01)).project(this.camera);
+    const pr = g.localToWorld(new THREE.Vector3(0.02, 0, 0.01)).project(this.camera);
+    const asp = this.camera.aspect;
+    const cx = (ndc.x - p0.x) * asp, cy = ndc.y - p0.y;
+    const sy = (pu.x - p0.x) * asp * cx + (pu.y - p0.y) * cy;
+    const sx = (pr.x - p0.x) * asp * cx + (pr.y - p0.y) * cy;
+    return { sx, sy };
+  }
+
   currentNDC() { return this.locked ? new THREE.Vector2(0, 0) : this.mouse; }
 
   onDown(e) {
@@ -78,7 +91,8 @@ export class Input {
       const local = ctl.group.worldToLocal(hit.point.clone());
       G.audio?.at(hit.point);
       this.active = { ctl, button: e.button };
-      ctl.interact({ type: 'down', button: e.button, local, object: hit.object });
+      const { sx, sy } = this.screenSides(ctl, this.currentNDC());
+      ctl.interact({ type: 'down', button: e.button, local, object: hit.object, sx, sy });
       G.shadowDirty = G.time + 0.6;
       this.canvas.setPointerCapture?.(e.pointerId);
       return;

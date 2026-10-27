@@ -314,7 +314,7 @@ export class Toggle extends Control {
   interact(ev) {
     if (ev.type === 'down') {
       if (this.o.guard) {
-        if (ev.object.userData.isGuard && this.guardOpen) {
+        if (this.guardOpen && ev.button === 2) {
           this.guardOpen = false;
           const safe = this.o.guardSafe ?? 0;
           if (this.value !== safe) { this.set(safe); G.audio?.click('toggle'); }
@@ -323,7 +323,8 @@ export class Toggle extends Control {
         }
         if (!this.guardOpen) { this.guardOpen = true; G.audio?.click('guard'); return; }
       }
-      let dir = ev.button === 2 ? -1 : (ev.local.y > 0 ? 1 : -1);
+      // two-position switches simply flip; three-position ones use the clicked side (right click = down)
+      let dir = this.n === 2 ? (this.value ? -1 : 1) : ev.button === 2 ? -1 : ((ev.sy ?? ev.local.y) > 0 ? 1 : -1);
       this.move(dir);
       this.held = true;
     } else if (ev.type === 'up') {
@@ -351,7 +352,7 @@ export class Toggle extends Control {
   }
   tip() {
     let state = this.o.positions[this.value];
-    if (this.o.guard) state += this.guardOpen ? '  ·  Schutzkappe offen' : '  ·  Schutzkappe zu';
+    if (this.o.guard) state += this.guardOpen ? '  ·  Kappe offen (Rechtsklick: schließen)' : '  ·  Kappe zu (Klick: öffnen)';
     return { title: this.name, state };
   }
 }
@@ -511,7 +512,7 @@ export class Rotary extends Control {
   }
   interact(ev) {
     let dir = 0;
-    if (ev.type === 'down') dir = ev.button === 2 ? -1 : (ev.local.x >= 0 ? 1 : -1);
+    if (ev.type === 'down') dir = ev.button === 2 ? -1 : ((ev.sx ?? ev.local.x) >= 0 ? 1 : -1);
     else if (ev.type === 'wheel') dir = ev.dir;
     if (!dir) return;
     const v = clamp(this.value + dir, 0, this.n - 1);
@@ -563,7 +564,7 @@ export class Knob extends Control {
   }
   interact(ev) {
     let d = 0;
-    if (ev.type === 'down') d = (ev.button === 2 ? -1 : (ev.local.x >= 0 ? 1 : -1)) * 0.1;
+    if (ev.type === 'down') d = (ev.button === 2 ? -1 : ((ev.sx ?? ev.local.x) >= 0 ? 1 : -1)) * 0.1;
     else if (ev.type === 'wheel') d = ev.dir * 0.05;
     if (!d) return;
     const v = clamp(Math.round((this.value + d) * 100) / 100, 0, 1);
